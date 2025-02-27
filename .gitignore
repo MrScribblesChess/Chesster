@@ -26,3 +26,4 @@ build
 .yarnrc
 .env
 .idea
+local.env
