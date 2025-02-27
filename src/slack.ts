@@ -722,9 +722,9 @@ export class SlackBot {
         // @ https://api.slack.com/methods/users.list
         //
         // Iterate over all of the slack users and map them up
-        for await (const page of (this.web.paginate(
+        for await (const page of this.web.paginate(
             'users.list'
-        ) as unknown) as AsyncIterable<SlackUserListResponse>) {
+        ) as unknown as AsyncIterable<SlackUserListResponse>) {
             if (page.ok) {
                 page.members.map((slackUser) => {
                     newUsers.add({
@@ -761,10 +761,10 @@ export class SlackBot {
             this.channels.idStringPrefix
         )
         // @ https://api.slack.com/methods/conversations.list
-        for await (const page of (this.web.paginate('conversations.list', {
+        for await (const page of this.web.paginate('conversations.list', {
             types: 'public_channel,private_channel',
             exclude_archived: true,
-        }) as unknown) as AsyncIterable<SlackChannelListResponse>) {
+        }) as unknown as AsyncIterable<SlackChannelListResponse>) {
             if (page.ok) {
                 page.channels.map((c) => {
                     if (c.is_channel) newChannels.add(c)
@@ -1000,8 +1000,7 @@ ${usernames.join(', ')}`
             this.log.info(`Error handling event: ${message}`)
             this.say({
                 channel: message.channel.id,
-                text:
-                    'Something has gone terribly terribly wrong. Please forgive me.',
+                text: 'Something has gone terribly terribly wrong. Please forgive me.',
             })
         }
     }
