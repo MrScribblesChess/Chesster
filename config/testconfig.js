@@ -6,7 +6,7 @@ const UNSTABLE_BOT_LONEWOLF_ID = 'C015V92UJUX'
 let config = require('./config.js')
 
 // TODO delete this after debugging
-console.log('config1:', config)
+// console.log('config1:', config)
 
 config['watcherBaseURL'] = 'https://lichess.dev/api/stream/games-by-users'
 config['winston']['channel'] = '#modster-logging'
@@ -55,6 +55,6 @@ config['pingMods'] = {
 }
 
 // TODO delete this after debugging
-console.log('config2:', config)
+// console.log('config2:', config)
 
 module.exports = config
