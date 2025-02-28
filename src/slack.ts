@@ -2,6 +2,7 @@
 // Bot / Slack related helpers
 // -----------------------------------------------------------------------------
 import { RTMClient } from '@slack/rtm-api'
+import { App } from '@slack/bolt'
 import {
     WebClient,
     WebAPICallResult,
@@ -590,6 +591,7 @@ export class SlackBot {
     private team?: SlackTeam
     private refreshCount = 0
     private listeners: SlackRTMEventListenerOptions[] = []
+    private app: App
 
     constructor(
         public slackName: string,
@@ -622,8 +624,18 @@ export class SlackBot {
             '#'
         )
 
+        // Will be replaced
         this.rtm = new RTMClient(this.token)
         this.web = new WebClient(this.token)
+
+        // New Events API stuff- replaces this.rtm and this.web
+        // TODO maybe these tokens should go in config or something?
+        this.app = new App({
+            token: process.env.BOT_TOKEN,
+            signingSecret: process.env.SLACK_SIGNING_SECRET,
+            socketMode: true,
+            appToken: process.env.SLACK_APP_TOKEN,
+        })
     }
     async start() {
         // Connect to Slack
