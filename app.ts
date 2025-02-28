@@ -5,6 +5,9 @@
 // :sexy-glbert:
 
 // To start this app, run `npx ts-node app.ts`
+
+// Notes to self:
+// payload.channel is the channel id
 // -----------------------------------------------------------------------------
 
 // For some reason, when I just require App its type is `any`
@@ -17,18 +20,6 @@ dotenv.config({
     path: './local.env',
 })
 
-// // Require the Node Slack SDK package (github.com/slackapi/node-slack-sdk)
-// // Docs told me to do this, not sure it's actually necessary
-// const { WebClient, LogLevel } = require('@slack/web-api')
-
-// // WebClient instantiates a client that can call API methods
-// // When using Bolt, you can use either `app.client` or the `client` passed to listeners.
-// // Docs told me to do this, not sure it's actually necessary
-// const client = new WebClient(`${process.env.SLACK_APP_TOKEN}`, {
-//     // LogLevel can be imported and used to make debugging simpler
-//     logLevel: LogLevel.DEBUG,
-// })
-
 // Initializes your app with your bot token and signing secret
 const app = new App({
     token: process.env.BOT_TOKEN,
@@ -38,8 +29,10 @@ const app = new App({
 }) as App<StringIndexed> // For some reason I wasn't getting intellisense autocomplete on `app` without this
 
 // Listens to incoming messages that contain "hello"
-app.message('hello', async ({ message, say }) => {
+app.message('hello', async ({ message, say, payload }) => {
     app.logger.info('Received hello')
+
+    app.logger.info('payload.channel', payload.channel)
 
     // say() sends a message to the channel where the event was triggered
     // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
@@ -71,6 +64,14 @@ app.message(/^source$/i, async ({ message, say, client }) => {
     } catch (error) {
         app.logger.error(`Error handling source command: ${error}`)
     }
+})
+
+app.event('app_mention', async ({ say, payload }) => {
+    app.logger.info('Received app_mention event')
+
+    app.logger.info('payload.channel', payload.channel)
+
+    await say(`Hey there <@${payload.user}>!`)
 })
 
 app.command('Bob', async ({ say }) => {
