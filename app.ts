@@ -3,11 +3,13 @@
 // It opens a websocket connection to Slack's Events API and listens for messages in a channel
 // I intend to move this logic to slack.ts. If you see this message, someone's been slacking.
 // :sexy-glbert:
+
+// To start this app, run `npx ts-node app.ts`
 // -----------------------------------------------------------------------------
 
 // For some reason, when I just require App its type is `any`
 // And I can't import App from '@slack/bolt' because it's not a module. Updating it to allow an import statement would require changing other project config
-const { App } = require('@slack/bolt')
+import { App } from '@slack/bolt'
 
 const dotenv = require('dotenv')
 
