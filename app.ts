@@ -7,18 +7,17 @@
 
 // For some reason, when I just require App its type is `any`
 // And I can't import App from '@slack/bolt' because it's not a module. Updating it to allow an import statement would require changing other project config
-const { App } = require('@slack/bolt') as {
-    App: typeof import('@slack/bolt').App
-}
+const { App } = require('@slack/bolt')
 
-import dotenv from 'dotenv'
+const dotenv = require('dotenv')
+
 dotenv.config({
     path: './local.env',
 })
 
 // Require the Node Slack SDK package (github.com/slackapi/node-slack-sdk)
 // Docs told me to do this, not sure it's actually necessary
-import { WebClient, LogLevel } from '@slack/web-api'
+const { WebClient, LogLevel } = require('@slack/web-api')
 
 // WebClient instantiates a client that can call API methods
 // When using Bolt, you can use either `app.client` or the `client` passed to listeners.
