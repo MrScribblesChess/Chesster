@@ -5,7 +5,11 @@
 // :sexy-glbert:
 // -----------------------------------------------------------------------------
 
-const App = require('@slack/bolt')
+// For some reason, when I just require App its type is `any`
+// And I can't import App from '@slack/bolt' because it's not a module. Updating it to allow an import statement would require changing other project config
+const { App } = require('@slack/bolt') as {
+    App: typeof import('@slack/bolt').App
+}
 
 import dotenv from 'dotenv'
 dotenv.config({
@@ -13,10 +17,12 @@ dotenv.config({
 })
 
 // Require the Node Slack SDK package (github.com/slackapi/node-slack-sdk)
+// Docs told me to do this, not sure it's actually necessary
 import { WebClient, LogLevel } from '@slack/web-api'
 
 // WebClient instantiates a client that can call API methods
 // When using Bolt, you can use either `app.client` or the `client` passed to listeners.
+// Docs told me to do this, not sure it's actually necessary
 const client = new WebClient(`${process.env.SLACK_APP_TOKEN}`, {
     // LogLevel can be imported and used to make debugging simpler
     logLevel: LogLevel.DEBUG,
@@ -36,6 +42,7 @@ app.message('hello', async ({ message, say }) => {
 
     // say() sends a message to the channel where the event was triggered
     // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
+    // @ts-expect-error this is a known bug, user definitely exists on message
     await say(`Hey there <@${message.user}>!`)
 })
 
