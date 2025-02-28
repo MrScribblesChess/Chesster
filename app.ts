@@ -1,8 +1,9 @@
-// README
+// -----------------------------------------------------------------------------
 // This file's purpose is to help test our transition from Slack's old RTM API to the new Events API
 // It opens a websocket connection to Slack's Events API and listens for messages in a channel
 // I intend to move this logic to slack.ts. If you see this message, someone's been slacking.
 // :sexy-glbert:
+// -----------------------------------------------------------------------------
 
 const App = require('@slack/bolt')
 
