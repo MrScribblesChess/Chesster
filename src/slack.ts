@@ -638,6 +638,15 @@ export class SlackBot {
         })
     }
     async start() {
+        this.app.message('hello', async ({ message, say }) => {
+            this.app.logger.info('Received hello')
+
+            // say() sends a message to the channel where the event was triggered
+            // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
+            // @ts-expect-error this is a known bug, user definitely exists on message
+            await say(`Hey there <@${message.user}>!`)
+        })
+
         // Connect to Slack
         const { self, team } = await this.rtm.start()
         this.controller = self as SlackBotSelf
