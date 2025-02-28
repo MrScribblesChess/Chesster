@@ -8,6 +8,10 @@
 
 // Notes to self:
 // payload.channel is the channel id
+
+// command doesn't require chesster to figure out which league it's associated with, while league_command does.
+
+// Message forwarding:https://github.com/Lichess4545/Chesster/blob/main/src/commands/messageForwarding.ts#L9-L102
 // -----------------------------------------------------------------------------
 
 // For some reason, when I just require App its type is `any`

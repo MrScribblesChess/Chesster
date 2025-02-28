@@ -1026,8 +1026,17 @@ ${usernames.join(', ')}`
         }
     }
 
+    // Events API migration notes:
+    // This function does the following (per Lakin):
+    // Gets info about the channel of the message
+    // Makes a chessterMessage object with our data in it.
+    // Checks a bunch of attributes is it a bot? is it a DM?
+    // Then it routes the message to the appropriate "listener"
+    // The listener concept is just the idea of a callback.
     async startOnListener() {
         this.rtm.on('message', async (event: SlackMessage) => {
+            // Events API migration notes:
+            // Per lakin, about this try catch block: "all it's doing is determining whether there is a registered listener that wants this message and then calling it if there is"
             try {
                 const channel = await this.getChannel(event.channel)
                 if (!channel) {
