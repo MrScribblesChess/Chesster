@@ -9,7 +9,7 @@
 
 // For some reason, when I just require App its type is `any`
 // And I can't import App from '@slack/bolt' because it's not a module. Updating it to allow an import statement would require changing other project config
-import { App } from '@slack/bolt'
+import { App, StringIndexed } from '@slack/bolt'
 
 const dotenv = require('dotenv')
 
@@ -35,7 +35,7 @@ const app = new App({
     signingSecret: process.env.SLACK_SIGNING_SECRET,
     socketMode: true,
     appToken: process.env.SLACK_APP_TOKEN,
-})
+}) as App<StringIndexed> // For some reason I wasn't getting intellisense autocomplete on `app` without this
 
 // Listens to incoming messages that contain "hello"
 app.message('hello', async ({ message, say }) => {
