@@ -15,17 +15,17 @@ dotenv.config({
     path: './local.env',
 })
 
-// Require the Node Slack SDK package (github.com/slackapi/node-slack-sdk)
-// Docs told me to do this, not sure it's actually necessary
-const { WebClient, LogLevel } = require('@slack/web-api')
+// // Require the Node Slack SDK package (github.com/slackapi/node-slack-sdk)
+// // Docs told me to do this, not sure it's actually necessary
+// const { WebClient, LogLevel } = require('@slack/web-api')
 
-// WebClient instantiates a client that can call API methods
-// When using Bolt, you can use either `app.client` or the `client` passed to listeners.
-// Docs told me to do this, not sure it's actually necessary
-const client = new WebClient(`${process.env.SLACK_APP_TOKEN}`, {
-    // LogLevel can be imported and used to make debugging simpler
-    logLevel: LogLevel.DEBUG,
-})
+// // WebClient instantiates a client that can call API methods
+// // When using Bolt, you can use either `app.client` or the `client` passed to listeners.
+// // Docs told me to do this, not sure it's actually necessary
+// const client = new WebClient(`${process.env.SLACK_APP_TOKEN}`, {
+//     // LogLevel can be imported and used to make debugging simpler
+//     logLevel: LogLevel.DEBUG,
+// })
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -43,6 +43,32 @@ app.message('hello', async ({ message, say }) => {
     // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
     // @ts-expect-error this is a known bug, user definitely exists on message
     await say(`Hey there <@${message.user}>!`)
+})
+
+// Simple implementation of the "source" command
+// This mimics the functionality from chesster.ts line ~240
+app.message(/^source$/i, async ({ message, say, client }) => {
+    app.logger.info('Received source command')
+
+    try {
+        // In the full implementation, we'd get this from config
+        const sourceUrl = 'https://github.com/Lichess4545/Chesster'
+
+        // Reply in thread if it's in a channel, directly otherwise
+        if (message.channel_type === 'im') {
+            await say(
+                `The source code for Chesster can be found at: ${sourceUrl}`
+            )
+        } else {
+            await client.chat.postMessage({
+                channel: message.channel,
+                thread_ts: message.ts,
+                text: `The source code for Chesster can be found at: ${sourceUrl}`,
+            })
+        }
+    } catch (error) {
+        app.logger.error(`Error handling source command: ${error}`)
+    }
 })
 
 app.command('Bob', async ({ say }) => {
