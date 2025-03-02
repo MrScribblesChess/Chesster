@@ -14,15 +14,94 @@
 // Message forwarding:https://github.com/Lichess4545/Chesster/blob/main/src/commands/messageForwarding.ts#L9-L102
 // -----------------------------------------------------------------------------
 
-// For some reason, when I just require App its type is `any`
-// And I can't import App from '@slack/bolt' because it's not a module. Updating it to allow an import statement would require changing other project config
-import { App, StringIndexed } from '@slack/bolt'
-
-const dotenv = require('dotenv')
+import { App, StringIndexed, SayFn } from '@slack/bolt'
+import { WebClient } from '@slack/web-api'
+import _ from 'lodash'
+import dotenv from 'dotenv'
 
 dotenv.config({
     path: './local.env',
 })
+
+// Type definitions to adapt from RTM to Events API
+export type HearsEventType =
+    | 'ambient'
+    | 'direct_message'
+    | 'direct_mention'
+    | 'bot_message'
+
+export interface SlackChannel {
+    id: string
+    name?: string
+    is_im?: boolean
+    is_group?: boolean
+}
+
+export interface ChessterMessage {
+    type: 'message'
+    user: string
+    channel: SlackChannel
+    text: string
+    ts: string
+    attachments?: any[]
+    isPingModerator: boolean
+}
+
+export interface CommandMessage extends ChessterMessage {
+    matches: RegExpMatchArray
+}
+
+// Middleware and callback types
+export type MiddlewareFn = (message: CommandMessage) => CommandMessage
+
+export type CommandCallbackFn = (message: CommandMessage, say: SayFn) => void
+export type LeagueCommandCallbackFn = (
+    message: CommandMessage,
+    say: SayFn
+) => void
+
+export interface CommandEventOptions {
+    type: 'command'
+    patterns: RegExp[]
+    messageTypes: HearsEventType[]
+    middleware?: MiddlewareFn[]
+    callback: CommandCallbackFn
+}
+
+export interface LeagueCommandEventOptions {
+    type: 'league_command'
+    patterns: RegExp[]
+    messageTypes: HearsEventType[]
+    middleware?: MiddlewareFn[]
+    callback: LeagueCommandCallbackFn
+}
+
+export type SlackEventListenerOptions =
+    | CommandEventOptions
+    | LeagueCommandEventOptions
+
+class StopControllerError extends Error {
+    constructor(error: string) {
+        super(error)
+    }
+}
+
+// Helper functions to check message types
+function wantsBotMessage(options: SlackEventListenerOptions) {
+    return options.messageTypes.findIndex((t) => t === 'bot_message') !== -1
+}
+
+function wantsDirectMessage(options: SlackEventListenerOptions) {
+    return options.messageTypes.findIndex((t) => t === 'direct_message') !== -1
+}
+
+function wantsDirectMention(options: SlackEventListenerOptions) {
+    return options.messageTypes.findIndex((t) => t === 'direct_mention') !== -1
+}
+
+function wantsAmbient(options: SlackEventListenerOptions) {
+    return options.messageTypes.findIndex((t) => t === 'ambient') !== -1
+}
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -30,44 +109,212 @@ const app = new App({
     signingSecret: process.env.SLACK_SIGNING_SECRET,
     socketMode: true,
     appToken: process.env.SLACK_APP_TOKEN,
-}) as App<StringIndexed> // For some reason I wasn't getting intellisense autocomplete on `app` without this
+}) as App<StringIndexed>
 
-// Listens to incoming messages that contain "hello"
-app.message('hello', async ({ message, say, payload }) => {
+const webClient = new WebClient(process.env.BOT_TOKEN)
+const listeners: SlackEventListenerOptions[] = []
+
+// Function to get channel info
+async function getChannel(
+    channelId: string
+): Promise<SlackChannel | undefined> {
+    try {
+        const result = await webClient.conversations.info({
+            channel: channelId,
+        })
+        if (result.ok && result.channel) {
+            return result.channel as SlackChannel
+        }
+    } catch (error) {
+        app.logger.error(`Error getting channel: ${error}`)
+    }
+    return undefined
+}
+
+/**
+ * Register a new listener for messages
+ */
+function hears(options: SlackEventListenerOptions): void {
+    listeners.push(options)
+
+    // Register the pattern with the Bolt app
+    const regexPatterns = options.patterns.map((p) => p.source).join('|')
+    const combinedRegex = new RegExp(regexPatterns, 'i')
+
+    app.message(combinedRegex, async ({ message, say, context }) => {
+        try {
+            // Get channel info
+            const channelInfo = await getChannel(message.channel)
+            if (!channelInfo) {
+                app.logger.warn(
+                    `Unable to get details for channel: ${message.channel}`
+                )
+                return
+            }
+
+            // Determine the message type
+            const isBotMessage =
+                message.subtype === 'bot_message' || 'bot_id' in message
+            const isDirectMessage =
+                channelInfo.is_im && !channelInfo.is_group && !isBotMessage
+            const text = message.text || ''
+            const botUserId = context.botUserId
+            const isDirectMention =
+                text.includes(`<@${botUserId}>`) && !isBotMessage
+            const isAmbient = !(
+                isDirectMention ||
+                isDirectMessage ||
+                isBotMessage
+            )
+
+            // Find the matching pattern
+            for (const pattern of options.patterns) {
+                let matchText = text
+
+                // Check if this listener wants this type of message
+                let isWanted = false
+
+                if (isDirectMessage && wantsDirectMessage(options)) {
+                    isWanted = true
+                } else if (isDirectMention && wantsDirectMention(options)) {
+                    isWanted = true
+                    // Remove the bot mention
+                    matchText = matchText
+                        .replace(`<@${botUserId}> `, '')
+                        .replace(`<@${botUserId}>`, '')
+                } else if (isAmbient && wantsAmbient(options)) {
+                    isWanted = true
+                } else if (isBotMessage && wantsBotMessage(options)) {
+                    isWanted = true
+                }
+
+                if (!isWanted) continue
+
+                const matches = matchText.match(pattern)
+                if (matches) {
+                    const chessterMessage: ChessterMessage = {
+                        type: 'message',
+                        user: message.user,
+                        channel: channelInfo,
+                        text: matchText.trim(),
+                        ts: message.ts,
+                        isPingModerator: false,
+                    }
+
+                    const commandMessage: CommandMessage = {
+                        ...chessterMessage,
+                        matches,
+                    }
+
+                    // Apply middleware
+                    let processedMessage = commandMessage
+                    if (options.middleware) {
+                        for (const middleware of options.middleware) {
+                            processedMessage = middleware(processedMessage)
+                        }
+                    }
+
+                    // Call the callback
+                    await options.callback(processedMessage, say)
+
+                    // We found a match, so break the loop
+                    break
+                }
+            }
+        } catch (error) {
+            app.logger.error(`Error handling message: ${error}`)
+            await say(
+                'Something has gone terribly terribly wrong. Please forgive me.'
+            )
+        }
+    })
+}
+
+// Simple reply function
+async function reply(message: ChessterMessage, response: string, say: SayFn) {
+    try {
+        // If in a thread, reply in thread
+        if (message.ts) {
+            await say({
+                text: response,
+                thread_ts: message.ts,
+            })
+        } else {
+            await say(response)
+        }
+    } catch (error) {
+        app.logger.error(`Error replying to message: ${error}`)
+    }
+}
+
+// Initialize the chesster commands
+function initializeCommands() {
+    // Source command
+    hears({
+        type: 'command',
+        patterns: [/^source$/i],
+        messageTypes: ['direct_mention', 'direct_message'],
+        callback: async (message, say) => {
+            const sourceUrl = 'https://github.com/Lichess4545/Chesster'
+
+            if (message.channel.is_im) {
+                await say(
+                    `The source code for Chesster can be found at: ${sourceUrl}`
+                )
+            } else {
+                await webClient.chat.postMessage({
+                    channel: message.channel.id,
+                    thread_ts: message.ts,
+                    text: `The source code for Chesster can be found at: ${sourceUrl}`,
+                })
+            }
+        },
+    })
+
+    // Commands list command
+    hears({
+        type: 'command',
+        patterns: [/^commands$/i, /^command list$/i, /^help$/i],
+        messageTypes: ['direct_mention', 'direct_message'],
+        callback: async (message, say) => {
+            const commandsText =
+                'I will respond to the following commands:\n```' +
+                '    [ starter guide ]              ! get the starter guide link\n' +
+                '    [ rules | regulations ]        ! get the rules and regulations\n' +
+                '    [ pairing | pairing <player> ] ! get your (or given <player>) latest pairings\n' +
+                '    [ pairings ]                   ! get pairings link\n' +
+                '    [ standings ]                  ! get standings link\n' +
+                '    [ commands | command list ]    ! this list\n' +
+                "    [ rating <player> ]            ! get the player's classical rating\n" +
+                '    [ source ]                     ! github repo for Chesster\n' +
+                '```'
+
+            await say(commandsText)
+        },
+    })
+
+    // Ping channel command for moderators
+    hears({
+        type: 'command',
+        patterns: [/^ping channel$/i],
+        messageTypes: ['direct_mention'],
+        callback: async (message, say) => {
+            // For now, anyone can ping the channel in our test
+            await say('<!channel>')
+        },
+    })
+}
+
+// Keep existing direct listeners
+app.message('hello', async ({ message, say }) => {
     app.logger.info('Received hello')
 
-    app.logger.info('payload.channel', payload.channel)
+    app.logger.info('payload.channel', message.channel)
 
     // say() sends a message to the channel where the event was triggered
     // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
     // @ts-expect-error this is a known bug, user definitely exists on message
     await say(`Hey there <@${message.user}>!`)
-})
-
-// Simple implementation of the "source" command
-// This mimics the functionality from chesster.ts line ~240
-app.message(/^source$/i, async ({ message, say, client }) => {
-    app.logger.info('Received source command')
-
-    try {
-        // In the full implementation, we'd get this from config
-        const sourceUrl = 'https://github.com/Lichess4545/Chesster'
-
-        // Reply in thread if it's in a channel, directly otherwise
-        if (message.channel_type === 'im') {
-            await say(
-                `The source code for Chesster can be found at: ${sourceUrl}`
-            )
-        } else {
-            await client.chat.postMessage({
-                channel: message.channel,
-                thread_ts: message.ts,
-                text: `The source code for Chesster can be found at: ${sourceUrl}`,
-            })
-        }
-    } catch (error) {
-        app.logger.error(`Error handling source command: ${error}`)
-    }
 })
 
 app.event('app_mention', async ({ say, payload }) => {
@@ -78,12 +325,17 @@ app.event('app_mention', async ({ say, payload }) => {
     await say(`Hey there <@${payload.user}>!`)
 })
 
-app.command('Bob', async ({ say }) => {
+app.command('/bob', async ({ command, ack, say }) => {
+    await ack()
     app.logger.info('Received Bob command')
-    await say(`Hey there <@message!>!`)
+    await say(`Hey there <@${command.user_id}>!`)
 })
+
+// Initialize our commands
+initializeCommands()
+
+// Start the app
 ;(async () => {
     await app.start()
-
     app.logger.info('⚡️ Bolt app is running!')
 })()
