@@ -203,7 +203,8 @@ function hears(options: SlackEventListenerOptions): void {
 
                 console.log('isWanted:', isWanted)
 
-                if (!isWanted) conutinue
+                // Here "continue" means "break out of this code block"
+                if (!isWanted) continue
 
                 const matches = matchText.match(pattern)
                 if (matches) {
