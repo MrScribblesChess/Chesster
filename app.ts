@@ -15,13 +15,13 @@
 
 // Note on type definitions: Most of these types were copied more or less directly from slack.ts and chesster.ts. I had trouble importing them so I copied them here, which probably isn't best practices but it's working for now.  When this logic is migrated in to slack.ts/chesster.ts, we can delete the duplicate type declarations if theyre unchanged, or update them if they've changed.
 
-// Note on chesster message processing: There are two kinds of incoming messages that chesster processes: Ones that tag chesster directly and ones that don't. Ones that tag chesster directly are handled in the `app.event('app_mention', ...)` block. Ones that don't tag chesster directly are handled in the `app.message(...)` block.
 // -----------------------------------------------------------------------------
 
 import { App, StringIndexed, SayFn } from '@slack/bolt'
 import { WebClient } from '@slack/web-api'
 // ChatGPT imported this but I don't believe it's doing anything; TODO delete this
 import _ from 'lodash'
+// Processes incoming chesster commands and sends appropriate responses
 import { processChessterMessage } from './utils/SlackEventsAPIUtils/chessterUtils'
 
 // Load environment variables; don't delete this
@@ -32,9 +32,12 @@ dotenv.config({
 
 /**Types of events that chesster responds to */
 export type HearsEventType =
+    // Messages posted in channels where chesster is present, but the message doesn't tag @chesster directly
     | 'ambient'
     | 'direct_message'
+    // Messages in a channel that tag @chesster directly
     | 'direct_mention'
+    // Messages from other bots in slack
     | 'bot_message'
 
 export interface SlackChannel {
