@@ -16,6 +16,8 @@ import {
     determineMessageContext,
     findMatchingListener,
     normalizeMessageText,
+    // The main function that calls the functions above
+    processChessterMessage,
 } from '../utils/SlackEventsAPIUtils/chessterUtils'
 
 import { CommandMessage, SlackEventListenerOptions } from '../app'
@@ -389,4 +391,8 @@ describe.only('chessterUtils', function () {
             assert.equal(result, text)
         })
     })
+
+    // I had some trouble with the mocks needed to write this; TODO write tests for the main function from chessterUtils if possible
+    // But, the above tests cover the sub-functions that are called in the main function, so there wouldn't be much to test in the main function itself anyway
+    // describe('#processChessterMessage()', function () {})
 })

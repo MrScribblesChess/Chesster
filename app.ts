@@ -25,7 +25,7 @@
 // Processes incoming messages and sends appropriate responses by calling processChessterMessage
 
 // Testing:
-// Currently only the command processing functions in chessterUtils have automated tests; would like to test more
+// Currently only the command processing functions in chessterUtils have automated tests; would like to test mor
 
 // -----------------------------------------------------------------------------
 
