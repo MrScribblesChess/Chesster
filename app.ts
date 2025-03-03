@@ -12,18 +12,22 @@
 // command doesn't require chesster to figure out which league it's associated with, while league_command does.
 
 // Message forwarding:https://github.com/Lichess4545/Chesster/blob/main/src/commands/messageForwarding.ts#L9-L102
+
+// Note on type definitions: Most of these types were copied more or less directly from slack.ts and chesster.ts. I had trouble importing them so I copied them here, which probably isn't best practices but it's working for now.  When this logic is migrated in to slack.ts/chesster.ts, we can delete the duplicate type declarations if theyre unchanged, or update them if they've changed.
 // -----------------------------------------------------------------------------
 
 import { App, StringIndexed, SayFn } from '@slack/bolt'
 import { WebClient } from '@slack/web-api'
+// ChatGPT imported this but I don't believe it's doing anything; TODO delete this
 import _ from 'lodash'
-import dotenv from 'dotenv'
 
+// Load environment variables; don't delete this
+import dotenv from 'dotenv'
 dotenv.config({
     path: './local.env',
 })
 
-// Type definitions to adapt from RTM to Events API
+/**Types of events that chesster responds to */
 export type HearsEventType =
     | 'ambient'
     | 'direct_message'
@@ -37,6 +41,7 @@ export interface SlackChannel {
     is_group?: boolean
 }
 
+/** Message *to* chesster */
 export interface ChessterMessage {
     type: 'message'
     user: string
@@ -54,6 +59,7 @@ export interface CommandMessage extends ChessterMessage {
 // Middleware and callback types
 export type MiddlewareFn = (message: CommandMessage) => CommandMessage
 
+/**Function that is called when a chesster trigger happens */
 export type CommandCallbackFn = (message: CommandMessage, say: SayFn) => void
 export type LeagueCommandCallbackFn = (
     message: CommandMessage,
@@ -80,12 +86,6 @@ export type SlackEventListenerOptions =
     | CommandEventOptions
     | LeagueCommandEventOptions
 
-class StopControllerError extends Error {
-    constructor(error: string) {
-        super(error)
-    }
-}
-
 // Helper functions to check message types
 function wantsBotMessage(options: SlackEventListenerOptions) {
     return options.messageTypes.findIndex((t) => t === 'bot_message') !== -1
@@ -103,7 +103,7 @@ function wantsAmbient(options: SlackEventListenerOptions) {
     return options.messageTypes.findIndex((t) => t === 'ambient') !== -1
 }
 
-// Initializes your app with your bot token and signing secret
+/**The server thingy that chesster lives on */
 const app = new App({
     token: process.env.BOT_TOKEN,
     signingSecret: process.env.SLACK_SIGNING_SECRET,
@@ -112,9 +112,10 @@ const app = new App({
 }) as App<StringIndexed>
 
 const webClient = new WebClient(process.env.BOT_TOKEN)
+
+/**List of chesster triggers. Each chesster.hears() call adds to this array */
 const listeners: SlackEventListenerOptions[] = []
 
-// Function to get channel info
 async function getChannel(
     channelId: string
 ): Promise<SlackChannel | undefined> {
@@ -132,7 +133,7 @@ async function getChannel(
 }
 
 /**
- * Register a new listener for messages
+ * Register a new listener for messages. Each `hears` call registers a new chesster prompt/command/trigger etc
  */
 function hears(options: SlackEventListenerOptions): void {
     listeners.push(options)
@@ -141,9 +142,13 @@ function hears(options: SlackEventListenerOptions): void {
     const regexPatterns = options.patterns.map((p) => p.source).join('|')
     const combinedRegex = new RegExp(regexPatterns, 'i')
 
+    // Listens for the combined sum of all chesster prompts
     app.message(combinedRegex, async ({ message, say, context }) => {
+        console.log('received message inside app.message outside try')
+
         try {
-            // Get channel info
+            console.log('received message inside app.message inside try')
+
             const channelInfo = await getChannel(message.channel)
             if (!channelInfo) {
                 app.logger.warn(
@@ -152,12 +157,17 @@ function hears(options: SlackEventListenerOptions): void {
                 return
             }
 
+            // @ts-expect-error this is a known bug, user definitely exists on message
+            const user = message.user
+
             // Determine the message type
             const isBotMessage =
                 message.subtype === 'bot_message' || 'bot_id' in message
             const isDirectMessage =
                 channelInfo.is_im && !channelInfo.is_group && !isBotMessage
+            // @ts-expect-error this is a known bug, text definitely exists on message
             const text = message.text || ''
+            console.log('text:', text)
             const botUserId = context.botUserId
             const isDirectMention =
                 text.includes(`<@${botUserId}>`) && !isBotMessage
@@ -178,7 +188,6 @@ function hears(options: SlackEventListenerOptions): void {
                     isWanted = true
                 } else if (isDirectMention && wantsDirectMention(options)) {
                     isWanted = true
-                    // Remove the bot mention
                     matchText = matchText
                         .replace(`<@${botUserId}> `, '')
                         .replace(`<@${botUserId}>`, '')
@@ -188,13 +197,15 @@ function hears(options: SlackEventListenerOptions): void {
                     isWanted = true
                 }
 
+                console.log('user:', user)
+
                 if (!isWanted) continue
 
                 const matches = matchText.match(pattern)
                 if (matches) {
                     const chessterMessage: ChessterMessage = {
                         type: 'message',
-                        user: message.user,
+                        user: user,
                         channel: channelInfo,
                         text: matchText.trim(),
                         ts: message.ts,
@@ -206,6 +217,8 @@ function hears(options: SlackEventListenerOptions): void {
                         matches,
                     }
 
+                    console.log('ABC')
+
                     // Apply middleware
                     let processedMessage = commandMessage
                     if (options.middleware) {
@@ -215,7 +228,7 @@ function hears(options: SlackEventListenerOptions): void {
                     }
 
                     // Call the callback
-                    await options.callback(processedMessage, say)
+                    options.callback(processedMessage, say)
 
                     // We found a match, so break the loop
                     break
@@ -224,7 +237,7 @@ function hears(options: SlackEventListenerOptions): void {
         } catch (error) {
             app.logger.error(`Error handling message: ${error}`)
             await say(
-                'Something has gone terribly terribly wrong. Please forgive me.'
+                "Error handling message. Its probably MrScribbles' fault. :sexy-glbert:"
             )
         }
     })
@@ -247,9 +260,8 @@ async function reply(message: ChessterMessage, response: string, say: SayFn) {
     }
 }
 
-// Initialize the chesster commands
 function initializeCommands() {
-    // Source command
+    // League source code
     hears({
         type: 'command',
         patterns: [/^source$/i],
@@ -271,7 +283,7 @@ function initializeCommands() {
         },
     })
 
-    // Commands list command
+    // List of chesster's commands
     hears({
         type: 'command',
         patterns: [/^commands$/i, /^command list$/i, /^help$/i],
@@ -300,41 +312,42 @@ function initializeCommands() {
         messageTypes: ['direct_mention'],
         callback: async (message, say) => {
             // For now, anyone can ping the channel in our test
+            // Or forever if I forget about this (TODO)
             await say('<!channel>')
         },
     })
 }
 
-// Keep existing direct listeners
-app.message('hello', async ({ message, say }) => {
-    app.logger.info('Received hello')
+// // Test/proof of concept
+// app.message('hello', async ({ message, say }) => {
+//     app.logger.info('Received hello')
 
-    app.logger.info('payload.channel', message.channel)
+//     app.logger.info('payload.channel', message.channel)
 
-    // say() sends a message to the channel where the event was triggered
-    // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
-    // @ts-expect-error this is a known bug, user definitely exists on message
-    await say(`Hey there <@${message.user}>!`)
-})
+//     // say() sends a message to the channel where the event was triggered
+//     // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
+//     // @ts-expect-error this is a known bug, user definitely exists on message
+//     await say(`Hey there <@${message.user}>!`)
+// })
 
-app.event('app_mention', async ({ say, payload }) => {
-    app.logger.info('Received app_mention event')
+// // Test/proof of concept
 
-    app.logger.info('payload.channel', payload.channel)
+// app.event('app_mention', async ({ say, payload }) => {
+//     app.logger.info('Received app_mention event')
 
-    await say(`Hey there <@${payload.user}>!`)
-})
+//     app.logger.info('payload.channel', payload.channel)
 
-app.command('/bob', async ({ command, ack, say }) => {
-    await ack()
-    app.logger.info('Received Bob command')
-    await say(`Hey there <@${command.user_id}>!`)
-})
+//     await say(`Hey there <@${payload.user}>!`)
+// })
 
-// Initialize our commands
+// app.command('/bob', async ({ command, ack, say }) => {
+//     await ack()
+//     app.logger.info('Received Bob command')
+//     await say(`Hey there <@${command.user_id}>!`)
+// })
+
+// Start up event listeners n'stuff
 initializeCommands()
-
-// Start the app
 ;(async () => {
     await app.start()
     app.logger.info('⚡️ Bolt app is running!')
