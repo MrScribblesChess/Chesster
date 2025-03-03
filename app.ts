@@ -256,24 +256,25 @@ function hears(options: SlackEventListenerOptions): void {
         const channelInfo = await getChannel(event.channel)
         if (!channelInfo) return
 
-        // Process the message similar to regular messages
-        const text = event.text
+        // Get the text of the message minus the @chesster tag
+        // So if the message is `@chesster source`, text will be `source`
+        const messageText = event.text
             .replace(`<@${context.botUserId}> `, '')
             .replace(`<@${context.botUserId}>`, '')
 
-        app.logger.info(`Processing mention with text: ${text}`)
+        app.logger.info(`Processing mention with text: ${messageText}`)
 
         // Loop through listeners to find a match
         for (const options of listeners) {
             if (wantsDirectMention(options)) {
                 for (const pattern of options.patterns) {
-                    const matches = text.match(pattern)
+                    const matches = messageText.match(pattern)
                     if (matches) {
                         const chessterMessage: ChessterMessage = {
                             type: 'message',
                             user: event.user!,
                             channel: channelInfo,
-                            text: text.trim(),
+                            text: messageText.trim(),
                             ts: event.ts,
                             isPingModerator: false,
                         }
