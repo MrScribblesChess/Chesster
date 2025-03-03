@@ -186,73 +186,30 @@ function hears(options: SlackEventListenerOptions): void {
     // This processes all messages that tag chesster directly (e.g. `@chesster source`)
     // Looking for messages that don't tag chesster directly? See the app.message block above
     app.event('app_mention', async ({ event, say, context }) => {
-        app.logger.info('Received app_mention event', event)
+        try {
+            const channelInfo = await getChannel(event.channel)
+            if (!channelInfo) return
 
-        // Get channel info
-        const channelInfo = await getChannel(event.channel)
-        if (!channelInfo) return
-
-        // Get the text of the message minus the @chesster tag
-        // So if the message is `@chesster source`, text will be `source`
-        const messageText = event.text
-            .replace(`<@${context.botUserId}> `, '')
-            .replace(`<@${context.botUserId}>`, '')
-
-        app.logger.info(`Processing mention with text: ${messageText}`)
-
-        // Loop through listeners to find a match
-        for (const options of listeners) {
-            if (wantsDirectMention(options)) {
-                for (const pattern of options.patterns) {
-                    const matches = messageText.match(pattern)
-                    if (matches) {
-                        const chessterMessage: ChessterMessage = {
-                            type: 'message',
-                            user: event.user!,
-                            channel: channelInfo,
-                            text: messageText.trim(),
-                            ts: event.ts,
-                            isPingModerator: false,
-                        }
-
-                        const commandMessage: CommandMessage = {
-                            ...chessterMessage,
-                            matches,
-                        }
-
-                        // Apply middleware
-                        let processedMessage = commandMessage
-                        if (options.middleware) {
-                            for (const middleware of options.middleware) {
-                                processedMessage = middleware(processedMessage)
-                            }
-                        }
-
-                        // Call the callback
-                        options.callback(processedMessage, say)
-                        break
-                    }
-                }
-            }
+            // Sanitize received message, check if message matches a chesster command, and send appropriate chesster response
+            await processChessterMessage({
+                text: event.text,
+                // I can't imagine a scenario where event.user is undefined, but it's possible
+                user: event.user!,
+                channel: channelInfo,
+                ts: event.ts,
+                app,
+                say,
+                botUserId: context.botUserId,
+                isDirectMention: true,
+                listeners,
+            })
+        } catch (error) {
+            app.logger.error(`Error handling app_mention: ${error}`)
+            await say(
+                "Error handling message. Its probably MrScribbles' fault. :sexy-glbert:"
+            )
         }
     })
-}
-
-// Simple reply function
-async function reply(message: ChessterMessage, response: string, say: SayFn) {
-    try {
-        // If in a thread, reply in thread
-        if (message.ts) {
-            await say({
-                text: response,
-                thread_ts: message.ts,
-            })
-        } else {
-            await say(response)
-        }
-    } catch (error) {
-        app.logger.error(`Error replying to message: ${error}`)
-    }
 }
 
 function initializeCommands() {
