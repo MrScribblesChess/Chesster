@@ -45,15 +45,17 @@ export async function processChessterMessage({
     ts: string
     app: App<StringIndexed>
     say: SayFn
-    botUserId: string
+    botUserId?: string
     isDirectMention?: boolean
     listeners: SlackEventListenerOptions[]
 }): Promise<void> {
     try {
-        // If this is a direct mention, strip the bot mention from the text
-        let normalizedText = isDirectMention
-            ? normalizeMessageText(text, botUserId)
-            : text
+        // If this is a direct mention and we have a botUserId, strip the mention from the text
+        // So `@chesster source` here is turned in to just `source`
+        let normalizedText =
+            isDirectMention && botUserId
+                ? normalizeMessageText(text, botUserId)
+                : text
 
         // Create the base message object that our commands will receive
         const chessterMessage: ChessterMessage = {
