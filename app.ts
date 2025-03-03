@@ -226,11 +226,7 @@ function initializeCommands() {
             if (message.channel.is_im) {
                 await say(replyText)
             } else {
-                await webClient.chat.postMessage({
-                    channel: message.channel.id,
-                    thread_ts: message.ts,
-                    text: replyText,
-                })
+                await say(replyText)
             }
         },
     })
