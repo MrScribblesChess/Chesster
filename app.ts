@@ -15,6 +15,15 @@
 
 // Note on type definitions: Most of these types were copied more or less directly from slack.ts and chesster.ts. I had trouble importing them so I copied them here, which probably isn't best practices but it's working for now.  When this logic is migrated in to slack.ts/chesster.ts, we can delete the duplicate type declarations if theyre unchanged, or update them if they've changed.
 
+// OVERVIEW:
+
+// This is the entry point for chesster. Chesster is built to interact with Slack's Events API through a websocket connection. Originally he was built on slack's RTM API but that was deprecated. This is built using Slack's Bolt framework.
+
+// This file does the following:
+// Start up chesster's server (that's what `app` is)
+// Register chesster's listeners (each chesster.hears() calls tells chesster to listen for a different command)
+// Processes incoming messages and sends appropriate responses by calling processChessterMessage
+
 // -----------------------------------------------------------------------------
 
 import { App, StringIndexed, SayFn } from '@slack/bolt'
@@ -93,19 +102,22 @@ export type SlackEventListenerOptions =
     | CommandEventOptions
     | LeagueCommandEventOptions
 
-// Helper functions to check message types
+/**Determines whether a command can be triggered by another bot like slackbot */
 function wantsBotMessage(options: SlackEventListenerOptions) {
     return options.messageTypes.includes('bot_message')
 }
 
+/**Determines whether a command can be triggered by a direct message to chesster */
 function wantsDirectMessage(options: SlackEventListenerOptions) {
     return options.messageTypes.includes('direct_message')
 }
 
+/**Determines whether a command can be triggered by a direct mention of chesster in a channel */
 function wantsDirectMention(options: SlackEventListenerOptions) {
     return options.messageTypes.includes('direct_mention')
 }
 
+/**Determines whether a command can be triggered by a message in a channel where chesster is present, but not directly tagged */
 function wantsAmbient(options: SlackEventListenerOptions) {
     return options.messageTypes.includes('ambient')
 }
@@ -161,9 +173,9 @@ function hears(options: SlackEventListenerOptions): void {
                 return
             }
 
-            // @ts-expect-error user exists on message
+            // @ts-expect-error this is a known bug; user definitely exists on message
             const user = message.user
-            // @ts-expect-error text exists on message
+            // @ts-expect-error this is a known bug; text definitely exists on message
             const text = message.text || ''
 
             // Sanitize received message, check if message matches a chesster command, and send appropriate chesster response
