@@ -3,6 +3,8 @@
 // These functions handle the common logic between regular messages (ones that don't tag chesster directly) and mentions(contain `@chesster`)
 
 // The main export is `processChessterMessage`, which is called from both the app.message and app.event('app_mention') handlers. It sanitizes the message text, determines the message context, finds the first matching listener, and executes any appropriate chesster response.
+
+// See test_chessterutils for testing
 // -----------------------------------------------------------------------------
 import { App, StringIndexed, SayFn } from '@slack/bolt'
 import {
@@ -111,14 +113,14 @@ export async function processChessterMessage({
  * Remove bot mention from text
  * Converts "@chesster help" to just "help"
  */
-function normalizeMessageText(text: string, botUserId: string): string {
+export function normalizeMessageText(text: string, botUserId: string): string {
     return text.replace(`<@${botUserId}> `, '').replace(`<@${botUserId}>`, '')
 }
 
 /**
  * Determine the context of a message (DM, mention, ambient, etc.)
  */
-function determineMessageContext(
+export function determineMessageContext(
     channel: SlackChannel,
     isDirectMention: boolean
 ) {
@@ -139,7 +141,7 @@ function determineMessageContext(
  * Find the first listener that matches the message
  * Returns the listener and the regex matches if found
  */
-function findMatchingListener(
+export function findMatchingListener(
     listeners: SlackEventListenerOptions[],
     text: string,
     context: {
@@ -169,7 +171,7 @@ function findMatchingListener(
 /**
  * Check if a listener wants to handle a specific message type
  */
-function doesListenerWantMessageType(
+export function doesListenerWantMessageType(
     listener: SlackEventListenerOptions,
     context: {
         isDirectMessage: boolean
@@ -200,7 +202,7 @@ function doesListenerWantMessageType(
  * Apply middleware functions to transform a message
  * Each middleware function can modify the message before it reaches the handler
  */
-function applyMiddleware(
+export function applyMiddleware(
     message: CommandMessage,
     middleware?: ((message: CommandMessage) => CommandMessage)[]
 ): CommandMessage {

@@ -24,6 +24,9 @@
 // Register chesster's listeners (each chesster.hears() calls tells chesster to listen for a different command)
 // Processes incoming messages and sends appropriate responses by calling processChessterMessage
 
+// Testing:
+// Currently only the command processing functions in chessterUtils have automated tests; would like to test more
+
 // -----------------------------------------------------------------------------
 
 import { App, StringIndexed, SayFn } from '@slack/bolt'
