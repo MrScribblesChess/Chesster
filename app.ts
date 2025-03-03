@@ -88,19 +88,19 @@ export type SlackEventListenerOptions =
 
 // Helper functions to check message types
 function wantsBotMessage(options: SlackEventListenerOptions) {
-    return options.messageTypes.findIndex((t) => t === 'bot_message') !== -1
+    return options.messageTypes.includes('bot_message')
 }
 
 function wantsDirectMessage(options: SlackEventListenerOptions) {
-    return options.messageTypes.findIndex((t) => t === 'direct_message') !== -1
+    return options.messageTypes.includes('direct_message')
 }
 
 function wantsDirectMention(options: SlackEventListenerOptions) {
-    return options.messageTypes.findIndex((t) => t === 'direct_mention') !== -1
+    return options.messageTypes.includes('direct_mention')
 }
 
 function wantsAmbient(options: SlackEventListenerOptions) {
-    return options.messageTypes.findIndex((t) => t === 'ambient') !== -1
+    return options.messageTypes.includes('ambient')
 }
 
 /**The server thingy that chesster lives on */
@@ -201,9 +201,9 @@ function hears(options: SlackEventListenerOptions): void {
 
                 console.log('user:', user)
 
-                console.log('isWanted`:', isWanted)
+                console.log('isWanted:', isWanted)
 
-                if (!isWanted) continue
+                if (!isWanted) conutinue
 
                 const matches = matchText.match(pattern)
                 if (matches) {
@@ -278,6 +278,7 @@ function initializeCommands() {
                     `The source code for Chesster can be found at: ${sourceUrl}`
                 )
             } else {
+                console.log('about to use webClient.chat.postMessage')
                 await webClient.chat.postMessage({
                     channel: message.channel.id,
                     thread_ts: message.ts,
