@@ -177,6 +177,8 @@ function hears(options: SlackEventListenerOptions): void {
                 isBotMessage
             )
 
+            app.logger.info('after isAmbient')
+
             // Find the matching pattern
             for (const pattern of options.patterns) {
                 let matchText = text
@@ -198,6 +200,8 @@ function hears(options: SlackEventListenerOptions): void {
                 }
 
                 console.log('user:', user)
+
+                console.log('isWanted`:', isWanted)
 
                 if (!isWanted) continue
 
