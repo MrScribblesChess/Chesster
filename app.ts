@@ -63,6 +63,7 @@ export type MiddlewareFn = (message: CommandMessage) => CommandMessage
 export type CommandCallbackFn = (message: CommandMessage, say: SayFn) => void
 export type LeagueCommandCallbackFn = (
     message: CommandMessage,
+    // Call this function to send a message from chesster. For instance `say('Hello!')` will send 'Hello!'
     say: SayFn
 ) => void
 
@@ -142,7 +143,7 @@ function hears(options: SlackEventListenerOptions): void {
     const regexPatterns = options.patterns.map((p) => p.source).join('|')
     const combinedRegex = new RegExp(regexPatterns, 'i')
 
-    // Listens for the combined sum of all chesster prompts
+    // This processes messages that do not tag chesster. I'm writing this early in the stages of migrating to Events API, but I believe this will be used for stuff like #team-scheduling where chesster isn't tagged directly, or scheduling DM responses that chesster uses to check responsiveness
     app.message(combinedRegex, async ({ message, say, context }) => {
         console.log('received message inside app.message outside try')
 
@@ -246,6 +247,58 @@ function hears(options: SlackEventListenerOptions): void {
             )
         }
     })
+
+    // This processes all messages that tag chesster directly (e.g. `@chesster source`)
+    app.event('app_mention', async ({ event, say, context }) => {
+        app.logger.info('Received app_mention event', event)
+
+        // Get channel info
+        const channelInfo = await getChannel(event.channel)
+        if (!channelInfo) return
+
+        // Process the message similar to regular messages
+        const text = event.text
+            .replace(`<@${context.botUserId}> `, '')
+            .replace(`<@${context.botUserId}>`, '')
+
+        app.logger.info(`Processing mention with text: ${text}`)
+
+        // Loop through listeners to find a match
+        for (const options of listeners) {
+            if (wantsDirectMention(options)) {
+                for (const pattern of options.patterns) {
+                    const matches = text.match(pattern)
+                    if (matches) {
+                        const chessterMessage: ChessterMessage = {
+                            type: 'message',
+                            user: event.user!,
+                            channel: channelInfo,
+                            text: text.trim(),
+                            ts: event.ts,
+                            isPingModerator: false,
+                        }
+
+                        const commandMessage: CommandMessage = {
+                            ...chessterMessage,
+                            matches,
+                        }
+
+                        // Apply middleware
+                        let processedMessage = commandMessage
+                        if (options.middleware) {
+                            for (const middleware of options.middleware) {
+                                processedMessage = middleware(processedMessage)
+                            }
+                        }
+
+                        // Call the callback
+                        options.callback(processedMessage, say)
+                        break
+                    }
+                }
+            }
+        }
+    })
 }
 
 // Simple reply function
@@ -274,16 +327,15 @@ function initializeCommands() {
         callback: async (message, say) => {
             const sourceUrl = 'https://github.com/Lichess4545/Chesster'
 
+            const replyText = `The source code for Chesster can be found at: ${sourceUrl}`
+
             if (message.channel.is_im) {
-                await say(
-                    `The source code for Chesster can be found at: ${sourceUrl}`
-                )
+                await say(replyText)
             } else {
-                console.log('about to use webClient.chat.postMessage')
                 await webClient.chat.postMessage({
                     channel: message.channel.id,
                     thread_ts: message.ts,
-                    text: `The source code for Chesster can be found at: ${sourceUrl}`,
+                    text: replyText,
                 })
             }
         },
