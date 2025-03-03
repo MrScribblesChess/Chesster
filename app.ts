@@ -14,12 +14,15 @@
 // Message forwarding:https://github.com/Lichess4545/Chesster/blob/main/src/commands/messageForwarding.ts#L9-L102
 
 // Note on type definitions: Most of these types were copied more or less directly from slack.ts and chesster.ts. I had trouble importing them so I copied them here, which probably isn't best practices but it's working for now.  When this logic is migrated in to slack.ts/chesster.ts, we can delete the duplicate type declarations if theyre unchanged, or update them if they've changed.
+
+// Note on chesster message processing: There are two kinds of incoming messages that chesster processes: Ones that tag chesster directly and ones that don't. Ones that tag chesster directly are handled in the `app.event('app_mention', ...)` block. Ones that don't tag chesster directly are handled in the `app.message(...)` block.
 // -----------------------------------------------------------------------------
 
 import { App, StringIndexed, SayFn } from '@slack/bolt'
 import { WebClient } from '@slack/web-api'
 // ChatGPT imported this but I don't believe it's doing anything; TODO delete this
 import _ from 'lodash'
+import { processChessterMessage } from './utils/SlackEventsAPIUtils/chessterUtils'
 
 // Load environment variables; don't delete this
 import dotenv from 'dotenv'
@@ -144,12 +147,9 @@ function hears(options: SlackEventListenerOptions): void {
     const combinedRegex = new RegExp(regexPatterns, 'i')
 
     // This processes messages that do not tag chesster. I'm writing this early in the stages of migrating to Events API, but I believe this will be used for stuff like #team-scheduling where chesster isn't tagged directly, or scheduling DM responses that chesster uses to check responsiveness
+    // Looking for messages that tag chesster directly? See the app.event block below
     app.message(combinedRegex, async ({ message, say, context }) => {
-        console.log('received message inside app.message outside try')
-
         try {
-            console.log('received message inside app.message inside try')
-
             const channelInfo = await getChannel(message.channel)
             if (!channelInfo) {
                 app.logger.warn(
@@ -158,88 +158,23 @@ function hears(options: SlackEventListenerOptions): void {
                 return
             }
 
-            // @ts-expect-error this is a known bug, user definitely exists on message
+            // @ts-expect-error user exists on message
             const user = message.user
-
-            // Determine the message type
-            const isBotMessage =
-                message.subtype === 'bot_message' || 'bot_id' in message
-            const isDirectMessage =
-                channelInfo.is_im && !channelInfo.is_group && !isBotMessage
-            // @ts-expect-error this is a known bug, text definitely exists on message
+            // @ts-expect-error text exists on message
             const text = message.text || ''
-            console.log('text:', text)
-            const botUserId = context.botUserId
-            const isDirectMention =
-                text.includes(`<@${botUserId}>`) && !isBotMessage
-            const isAmbient = !(
-                isDirectMention ||
-                isDirectMessage ||
-                isBotMessage
-            )
 
-            app.logger.info('after isAmbient')
-
-            // Find the matching pattern
-            for (const pattern of options.patterns) {
-                let matchText = text
-
-                // Check if this listener wants this type of message
-                let isWanted = false
-
-                if (isDirectMessage && wantsDirectMessage(options)) {
-                    isWanted = true
-                } else if (isDirectMention && wantsDirectMention(options)) {
-                    isWanted = true
-                    matchText = matchText
-                        .replace(`<@${botUserId}> `, '')
-                        .replace(`<@${botUserId}>`, '')
-                } else if (isAmbient && wantsAmbient(options)) {
-                    isWanted = true
-                } else if (isBotMessage && wantsBotMessage(options)) {
-                    isWanted = true
-                }
-
-                console.log('user:', user)
-
-                console.log('isWanted:', isWanted)
-
-                // Here "continue" means "break out of this code block"
-                if (!isWanted) continue
-
-                const matches = matchText.match(pattern)
-                if (matches) {
-                    const chessterMessage: ChessterMessage = {
-                        type: 'message',
-                        user: user,
-                        channel: channelInfo,
-                        text: matchText.trim(),
-                        ts: message.ts,
-                        isPingModerator: false,
-                    }
-
-                    const commandMessage: CommandMessage = {
-                        ...chessterMessage,
-                        matches,
-                    }
-
-                    console.log('ABC')
-
-                    // Apply middleware
-                    let processedMessage = commandMessage
-                    if (options.middleware) {
-                        for (const middleware of options.middleware) {
-                            processedMessage = middleware(processedMessage)
-                        }
-                    }
-
-                    // Call the callback
-                    options.callback(processedMessage, say)
-
-                    // We found a match, so break the loop
-                    break
-                }
-            }
+            // Sanitize received message, check if message matches a chesster command, and send appropriate chesster response
+            await processChessterMessage({
+                text,
+                user,
+                channel: channelInfo,
+                ts: message.ts,
+                app,
+                say,
+                botUserId: context.botUserId,
+                isDirectMention: false,
+                listeners,
+            })
         } catch (error) {
             app.logger.error(`Error handling message: ${error}`)
             await say(
@@ -249,6 +184,7 @@ function hears(options: SlackEventListenerOptions): void {
     })
 
     // This processes all messages that tag chesster directly (e.g. `@chesster source`)
+    // Looking for messages that don't tag chesster directly? See the app.message block above
     app.event('app_mention', async ({ event, say, context }) => {
         app.logger.info('Received app_mention event', event)
 

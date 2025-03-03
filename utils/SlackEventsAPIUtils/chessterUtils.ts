@@ -1,6 +1,8 @@
 // -----------------------------------------------------------------------------
 // Utility functions for processing messages in Chesster
 // These functions handle the common logic between regular messages (ones that don't tag chesster directly) and mentions(contain `@chesster`)
+
+// The main export is `processChessterMessage`, which is called from both the app.message and app.event('app_mention') handlers. It sanitizes the message text, determines the message context, finds the first matching listener, and executes any appropriate chesster response.
 // -----------------------------------------------------------------------------
 import { App, StringIndexed, SayFn } from '@slack/bolt'
 import {
@@ -15,6 +17,16 @@ import {
  * Can be called from both app.message and app.event('app_mention') handlers
  *
  * This sanitizes the message text, determines the message context, finds the first matching listener, and executes any appropriate chesster response
+ *
+ * @param {string} text - The message text
+ * @param {string} user - User ID who sent the message
+ * @param {SlackChannel} channel - Channel the message was sent in
+ * @param {string} ts - Message timestamp
+ * @param {App<StringIndexed>} app - The Slack app instance
+ * @param {SayFn} say - Function to send Chesster messages
+ * @param {string} botUserId - Chesster's user ID
+ * @param {boolean} isDirectMention - Whether this is a direct @mention
+ * @param {SlackEventListenerOptions[]} listeners - Registered chesster command listeners
  */
 export async function processChessterMessage({
     text,
@@ -27,15 +39,15 @@ export async function processChessterMessage({
     isDirectMention = false,
     listeners,
 }: {
-    text: string // The message text
-    user: string // User ID who sent the message
-    channel: SlackChannel // Channel the message was sent in
-    ts: string // Timestamp of the message
-    app: App<StringIndexed> // The Slack app instance
-    say: SayFn // Function to send messages
-    botUserId: string // The bot's user ID
-    isDirectMention?: boolean // Whether this is a direct @mention
-    listeners: SlackEventListenerOptions[] // Registered command listeners
+    text: string
+    user: string
+    channel: SlackChannel
+    ts: string
+    app: App<StringIndexed>
+    say: SayFn
+    botUserId: string
+    isDirectMention?: boolean
+    listeners: SlackEventListenerOptions[]
 }): Promise<void> {
     try {
         // If this is a direct mention, strip the bot mention from the text
@@ -108,7 +120,8 @@ function determineMessageContext(
     channel: SlackChannel,
     isDirectMention: boolean
 ) {
-    const isDirectMessage = channel.is_im && !channel.is_group
+    const isDirectMessage =
+        (channel?.is_im ?? false) && !(channel?.is_group ?? false)
     const isAmbient = !(isDirectMention || isDirectMessage)
 
     return {
