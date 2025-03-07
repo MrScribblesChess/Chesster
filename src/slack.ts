@@ -3,6 +3,14 @@
 // -----------------------------------------------------------------------------
 import { RTMClient } from '@slack/rtm-api'
 import { App } from '@slack/bolt'
+
+// Load environment variables; don't delete this
+// This is particularly for Events API stuff
+import dotenv from 'dotenv'
+dotenv.config({
+    path: './local.env',
+})
+
 import {
     WebClient,
     WebAPICallResult,
@@ -841,7 +849,7 @@ export class SlackBot {
     }
     async refresh(delay: number) {
         return criticalPath(
-            new Promise((resolve) => {
+            new Promise<void>((resolve) => {
                 this.refreshCount++
                 this.log.info(`doing refresh ${this.refreshCount}`)
 
