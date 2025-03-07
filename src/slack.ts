@@ -950,6 +950,7 @@ ${usernames.join(', ')}`
         return undefined
     }
 
+    // Events API migration: I don't believe this needs changes because webClient is the same
     async react(message: CommandMessage, emoji: string) {
         if (!message.ts) return
         return this.web.reactions.add({

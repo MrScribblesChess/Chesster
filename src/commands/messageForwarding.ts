@@ -1,3 +1,5 @@
+// Events API migration: 1/5, don't believe there's anything to do here
+
 import _ from 'lodash'
 import winston from 'winston'
 import * as commands from '../commands'

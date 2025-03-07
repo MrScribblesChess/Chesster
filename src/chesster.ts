@@ -93,6 +93,7 @@ directRequiresLeague(
 )
 
 // availability
+// Events migration difficulty: 1/5. Bot.reply and bot.getSlackUserFromNameOrID
 chesster.hears({
     type: 'league_command',
     patterns: [/available/i, /unavailable/i],
@@ -101,6 +102,7 @@ chesster.hears({
 })
 
 // alternate assignment
+// Events migration difficulty: 1/5. Bot.reply and bot.getSlackUserFromNameOrID
 chesster.hears({
     type: 'league_command',
     patterns: [/^assign/i],
@@ -109,6 +111,7 @@ chesster.hears({
 })
 
 // alternate unassignment
+// Events API migration difficulty: 1/5. Bot.reply and bot.getSlackUserFromNameOrID
 chesster.hears({
     type: 'league_command',
     patterns: [/^unassign/i],
@@ -116,6 +119,7 @@ chesster.hears({
     callback: availability.unassignAlternate,
 })
 
+// Events API migration difficulty: 1/5. Bot.reply
 // Message Forwarding
 adminSlack.hears({
     type: 'command',
@@ -123,6 +127,7 @@ adminSlack.hears({
     messageTypes: ['direct_mention', 'bot_message'],
     callback: messageForwarding.forwardMessage(chesster, adminSlack),
 })
+// Events API migration difficulty: 1/5. See above
 adminSlack.hears({
     type: 'command',
     patterns: [/^refresh/i],
