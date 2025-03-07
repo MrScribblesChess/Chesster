@@ -593,7 +593,7 @@ export class SlackBot {
     private token: string
     public users: SlackEntityLookup<LeagueMember>
     public channels: SlackEntityLookup<SlackChannel>
-    public rtm: RTMClient
+    // public rtm: RTMClient
     public web: WebClient
     public controller?: SlackBotSelf
     private team?: SlackTeam
@@ -633,7 +633,7 @@ export class SlackBot {
         )
 
         // Will be replaced
-        this.rtm = new RTMClient(this.token)
+        // this.rtm = new RTMClient(this.token)
         this.web = new WebClient(this.token)
 
         // New Events API stuff- replaces this.rtm and this.web
@@ -646,59 +646,68 @@ export class SlackBot {
         })
     }
     async start() {
+        console.log('Start() in slack.ts')
+
+        // Turns chesster on
+        this.app.start()
+
         this.app.message('hello', async ({ message, say }) => {
             this.app.logger.info('Received hello')
 
             // say() sends a message to the channel where the event was triggered
             // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
-            // @ts-expect-error this is a known bug, user definitely exists on message
-            await say(`Hey there <@${message.user}>!`)
+            await say(
+                // @ts-expect-error this is a known bug, user definitely exists on message
+                `Hey there <@${message.user}>! I'm the real, flesh and blood Chesster, started locally and  hooked up the new Slack API. Now you just have to rewrite some functions or whatever and we'll be gucci.`
+            )
         })
 
+        this.app.logger.info('Starting app')
+
         // Connect to Slack
-        const { self, team } = await this.rtm.start()
-        this.controller = self as SlackBotSelf
-        this.team = team as SlackTeam
+        // const { self, team } = await this.rtm.start()
+        // this.controller = self as SlackBotSelf
+        // this.team = team as SlackTeam
 
         // Listen to events that we need
         // https://api.slack.com/events
-        this.rtm.on('goodbye', () => {
-            // TODO: figure out how to better handle this
-            this.log.error(
-                'RTM connection closing unexpectedly. I am going down.'
-            )
-            process.exit(1)
-        })
+        // this.rtm.on('goodbye', () => {
+        //     // TODO: figure out how to better handle this
+        //     this.log.error(
+        //         'RTM connection closing unexpectedly. I am going down.'
+        //     )
+        //     process.exit(1)
+        // })
 
         // -----------------------------------------------------------------------------
         // Log lifecycle events
-        this.rtm.on('connecting', () => {
-            this.log.info('Connecting')
-        })
-        this.rtm.on('authenticated', (connectData) => {
-            this.log.info(`Authenticating: ${JSON.stringify(connectData)}`)
-        })
-        this.rtm.on('connected', () => {
-            this.log.info('Connected')
-        })
-        this.rtm.on('ready', () => {
-            this.log.info('Ready')
-        })
-        this.rtm.on('disconnecting', () => {
-            this.log.info('Disconnecting')
-        })
-        this.rtm.on('reconnecting', () => {
-            this.log.info('Reconnecting')
-        })
-        this.rtm.on('disconnected', (error) => {
-            this.log.error(`Disconnecting: ${JSON.stringify(error)}`)
-        })
-        this.rtm.on('error', (error) => {
-            this.log.error(`Error: ${JSON.stringify(error)}`)
-        })
-        this.rtm.on('unable_to_rtm_start', (error) => {
-            this.log.error(`Unable to RTM start: ${JSON.stringify(error)}`)
-        })
+        // this.rtm.on('connecting', () => {
+        //     this.log.info('Connecting')
+        // })
+        // this.rtm.on('authenticated', (connectData) => {
+        //     this.log.info(`Authenticating: ${JSON.stringify(connectData)}`)
+        // })
+        // this.rtm.on('connected', () => {
+        //     this.log.info('Connected')
+        // })
+        // this.rtm.on('ready', () => {
+        //     this.log.info('Ready')
+        // })
+        // this.rtm.on('disconnecting', () => {
+        //     this.log.info('Disconnecting')
+        // })
+        // this.rtm.on('reconnecting', () => {
+        //     this.log.info('Reconnecting')
+        // })
+        // this.rtm.on('disconnected', (error) => {
+        //     this.log.error(`Disconnecting: ${JSON.stringify(error)}`)
+        // })
+        // this.rtm.on('error', (error) => {
+        //     this.log.error(`Error: ${JSON.stringify(error)}`)
+        // })
+        // this.rtm.on('unable_to_rtm_start', (error) => {
+        //     this.log.error(`Unable to RTM start: ${JSON.stringify(error)}`)
+        // })
 
         // connect to the database
         if (this.connectToModels) {
@@ -1043,80 +1052,77 @@ ${usernames.join(', ')}`
     // Then it routes the message to the appropriate "listener"
     // The listener concept is just the idea of a callback.
     async startOnListener() {
-        this.rtm.on('message', async (event: SlackMessage) => {
-            // Events API migration notes:
-            // Per lakin, about this try catch block: "all it's doing is determining whether there is a registered listener that wants this message and then calling it if there is"
-            try {
-                const channel = await this.getChannel(event.channel)
-                if (!channel) {
-                    this.log.warn(
-                        `Unable to get details for channel: ${event.channel}`
-                    )
-                    return
-                }
-                const chessterMessage: ChessterMessage = {
-                    ...event,
-                    type: 'message',
-                    channel,
-                    isPingModerator: false,
-                }
-
-                const isBotMessage =
-                    event.subtype === 'bot_message' || event.bot_id
-                const isDirectMessage =
-                    channel &&
-                    channel.is_im &&
-                    !channel.is_group &&
-                    !isBotMessage
-                const isDirectMention =
-                    chessterMessage.text.indexOf(
-                        `<@${this.controller?.id}>`
-                    ) !== -1 && !isBotMessage
-                const isAmbient = !(
-                    isDirectMention ||
-                    isDirectMessage ||
-                    isBotMessage
-                )
-                this.listeners.map(async (listener) => {
-                    let isWanted = false
-                    let text = event.text
-                    if (isDirectMessage && wantsDirectMessage(listener)) {
-                        isWanted = true
-                    } else if (
-                        isDirectMention &&
-                        wantsDirectMention(listener)
-                    ) {
-                        isWanted = true
-                        text = text.replace(`<@${this.controller?.id}> `, '')
-                        text = text.replace(`<@${this.controller?.id}>`, '')
-                    } else if (isAmbient && wantsAmbient(listener)) {
-                        isWanted = true
-                    } else if (isBotMessage && wantsBotMessage(listener)) {
-                        isWanted = true
-                    }
-
-                    if (!isWanted) return
-
-                    listener.patterns.some((p) => {
-                        const matches = text.match(p)
-                        if (!matches) return false
-                        this.handleMatch(listener, {
-                            ...chessterMessage,
-                            text: text.trim(),
-                            matches,
-                        })
-                        return true
-                    })
-                })
-            } catch (error) {
-                this.log.error(
-                    `Uncaught error in handling an rtm message: ${JSON.stringify(
-                        error
-                    )}`
-                )
-                this.log.error(`Stack: ${new Error().stack}`)
-            }
-        })
+        // this.rtm.on('message', async (event: SlackMessage) => {
+        //     // Events API migration notes:
+        //     // Per lakin, about this try catch block: "all it's doing is determining whether there is a registered listener that wants this message and then calling it if there is"
+        //     try {
+        //         const channel = await this.getChannel(event.channel)
+        //         if (!channel) {
+        //             this.log.warn(
+        //                 `Unable to get details for channel: ${event.channel}`
+        //             )
+        //             return
+        //         }
+        //         const chessterMessage: ChessterMessage = {
+        //             ...event,
+        //             type: 'message',
+        //             channel,
+        //             isPingModerator: false,
+        //         }
+        //         const isBotMessage =
+        //             event.subtype === 'bot_message' || event.bot_id
+        //         const isDirectMessage =
+        //             channel &&
+        //             channel.is_im &&
+        //             !channel.is_group &&
+        //             !isBotMessage
+        //         const isDirectMention =
+        //             chessterMessage.text.indexOf(
+        //                 `<@${this.controller?.id}>`
+        //             ) !== -1 && !isBotMessage
+        //         const isAmbient = !(
+        //             isDirectMention ||
+        //             isDirectMessage ||
+        //             isBotMessage
+        //         )
+        //         this.listeners.map(async (listener) => {
+        //             let isWanted = false
+        //             let text = event.text
+        //             if (isDirectMessage && wantsDirectMessage(listener)) {
+        //                 isWanted = true
+        //             } else if (
+        //                 isDirectMention &&
+        //                 wantsDirectMention(listener)
+        //             ) {
+        //                 isWanted = true
+        //                 text = text.replace(`<@${this.controller?.id}> `, '')
+        //                 text = text.replace(`<@${this.controller?.id}>`, '')
+        //             } else if (isAmbient && wantsAmbient(listener)) {
+        //                 isWanted = true
+        //             } else if (isBotMessage && wantsBotMessage(listener)) {
+        //                 isWanted = true
+        //             }
+        //             if (!isWanted) return
+        //             listener.patterns.some((p) => {
+        //                 const matches = text.match(p)
+        //                 if (!matches) return false
+        //                 this.handleMatch(listener, {
+        //                     ...chessterMessage,
+        //                     text: text.trim(),
+        //                     matches,
+        //                 })
+        //                 return true
+        //             })
+        //         })
+        //     } catch (error) {
+        //         this.log.error(
+        //             `Uncaught error in handling an rtm message: ${JSON.stringify(
+        //                 error
+        //             )}`
+        //         )
+        //         this.log.error(`Stack: ${new Error().stack}`)
+        //     }
+        // })
     }
 
     hears(options: SlackRTMEventListenerOptions): void {
@@ -1124,8 +1130,8 @@ ${usernames.join(', ')}`
     }
 
     on(options: OnOptions) {
-        return this.rtm.on(options.event, (event) =>
-            options.callback(this, event)
-        )
+        // return this.rtm.on(options.event, (event) =>
+        //     options.callback(this, event)
+        // )
     }
 }
