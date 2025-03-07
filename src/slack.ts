@@ -621,19 +621,19 @@ export class SlackBot {
             this.log.error(error)
             throw new Error(error)
         }
+        // May need changing with events API migration
         this.users = new SlackEntityLookup<LeagueMember>(
             slackName,
             'Users',
             '@'
         )
+        // May need changing with events API migration
         this.channels = new SlackEntityLookup<SlackChannel>(
             slackName,
             'Channels',
             '#'
         )
 
-        // Will be replaced
-        // this.rtm = new RTMClient(this.token)
         this.web = new WebClient(this.token)
 
         // New Events API stuff- replaces this.rtm and this.web
@@ -646,10 +646,26 @@ export class SlackBot {
         })
     }
     async start() {
-        console.log('Start() in slack.ts')
+        this.log.info('Starting Chesster with Events API')
 
         // Turns chesster on
-        this.app.start()
+        await this.app.start()
+        this.log.info('Bolt app started successfully')
+
+        // // Connect to the database
+        // I'm not sure if this is necessary for the events API. Or even what it does. But when I uncomment this, chesster stops responding to prompts.
+        // if (this.connectToModels) {
+        //     await models.connect(this.config)
+        // }
+
+        // Set up event listeners
+        this.startOnListener()
+
+        // Much like `await models.connect` just above, I'm not sure if this is necessary for the events API. Or even what it does. But when I uncomment this, I get errors when I start up chesster..
+        // await this.updatesUsers()
+        // await this.updateChannels()
+
+        this.log.info('Chesster is ready!')
 
         this.app.message('hello', async ({ message, say }) => {
             this.app.logger.info('Received hello')
