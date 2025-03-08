@@ -257,8 +257,10 @@ chesster.hears({
     type: 'command',
     patterns: [/source/i],
     messageTypes: ['direct_message', 'direct_mention'],
-    callback: (bot, message) =>
-        bot.reply(message, chesster.config.links.source),
+    callback: (bot, message) => {
+        console.log('received source command')
+        bot.reply(message, chesster.config.links.source)
+    },
 })
 
 // Scheduling

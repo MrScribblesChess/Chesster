@@ -634,7 +634,7 @@ export class SlackBot {
             '#'
         )
 
-        this.web = new WebClient(this.token)
+        this.web = new WebClient(process.env.BOT_TOKEN)
 
         // New Events API stuff- replaces this.rtm and this.web
         // TODO maybe these tokens should go in config or something?
