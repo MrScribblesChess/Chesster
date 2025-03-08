@@ -937,7 +937,6 @@ ${usernames.join(', ')}`
             text: response,
         })
     }
-
     async say(options: ChatPostMessageArguments) {
         // Replace user links in the form <@user> with <@U12345|user>
         if (options.text) {
@@ -953,7 +952,11 @@ ${usernames.join(', ')}`
             )
         }
         options.as_user = true
-        return this.web.chat.postMessage(options)
+        // Ensure attachments is always an array as required by Bolt's client
+        if (!options.attachments) {
+            options.attachments = []
+        }
+        return this.app.client.chat.postMessage(options as any)
     }
 
     async getChannel(channelId: string): Promise<SlackChannel | undefined> {
@@ -1068,77 +1071,123 @@ ${usernames.join(', ')}`
     // Then it routes the message to the appropriate "listener"
     // The listener concept is just the idea of a callback.
     async startOnListener() {
-        // this.rtm.on('message', async (event: SlackMessage) => {
-        //     // Events API migration notes:
-        //     // Per lakin, about this try catch block: "all it's doing is determining whether there is a registered listener that wants this message and then calling it if there is"
-        //     try {
-        //         const channel = await this.getChannel(event.channel)
-        //         if (!channel) {
-        //             this.log.warn(
-        //                 `Unable to get details for channel: ${event.channel}`
-        //             )
-        //             return
-        //         }
-        //         const chessterMessage: ChessterMessage = {
-        //             ...event,
-        //             type: 'message',
-        //             channel,
-        //             isPingModerator: false,
-        //         }
-        //         const isBotMessage =
-        //             event.subtype === 'bot_message' || event.bot_id
-        //         const isDirectMessage =
-        //             channel &&
-        //             channel.is_im &&
-        //             !channel.is_group &&
-        //             !isBotMessage
-        //         const isDirectMention =
-        //             chessterMessage.text.indexOf(
-        //                 `<@${this.controller?.id}>`
-        //             ) !== -1 && !isBotMessage
-        //         const isAmbient = !(
-        //             isDirectMention ||
-        //             isDirectMessage ||
-        //             isBotMessage
-        //         )
-        //         this.listeners.map(async (listener) => {
-        //             let isWanted = false
-        //             let text = event.text
-        //             if (isDirectMessage && wantsDirectMessage(listener)) {
-        //                 isWanted = true
-        //             } else if (
-        //                 isDirectMention &&
-        //                 wantsDirectMention(listener)
-        //             ) {
-        //                 isWanted = true
-        //                 text = text.replace(`<@${this.controller?.id}> `, '')
-        //                 text = text.replace(`<@${this.controller?.id}>`, '')
-        //             } else if (isAmbient && wantsAmbient(listener)) {
-        //                 isWanted = true
-        //             } else if (isBotMessage && wantsBotMessage(listener)) {
-        //                 isWanted = true
-        //             }
-        //             if (!isWanted) return
-        //             listener.patterns.some((p) => {
-        //                 const matches = text.match(p)
-        //                 if (!matches) return false
-        //                 this.handleMatch(listener, {
-        //                     ...chessterMessage,
-        //                     text: text.trim(),
-        //                     matches,
-        //                 })
-        //                 return true
-        //             })
-        //         })
-        //     } catch (error) {
-        //         this.log.error(
-        //             `Uncaught error in handling an rtm message: ${JSON.stringify(
-        //                 error
-        //             )}`
-        //         )
-        //         this.log.error(`Stack: ${new Error().stack}`)
-        //     }
-        // })
+        // Set up event handler for regular messages (not direct mentions)
+        this.app.message(/.*/, async ({ message, say, context }) => {
+            try {
+                const channel = await this.getChannel(message.channel)
+                if (!channel) {
+                    this.log.warn(
+                        `Unable to get details for channel: ${message.channel}`
+                    )
+                    return
+                }
+
+                // @ts-expect-error user exists on message
+                const user = message.user
+                // @ts-expect-error text exists on message
+                const text = message.text || ''
+
+                const chessterMessage: ChessterMessage = {
+                    type: 'message',
+                    user,
+                    channel,
+                    text,
+                    ts: message.ts,
+                    // @ts-ignore
+                    attachments: message.attachments || [],
+                    isPingModerator: false,
+                }
+
+                // Message context
+                const isDirectMessage = channel?.is_im && !channel?.is_group
+                const isAmbient = true
+                const isBotMessage =
+                    // @ts-expect-error bot_id exists on message --- I think? TODO investigate that
+                    message.subtype === 'bot_message' || message.bot_id
+
+                // Process each listener
+                this.listeners.forEach((listener) => {
+                    let isWanted = false
+
+                    if (isDirectMessage && wantsDirectMessage(listener)) {
+                        isWanted = true
+                    } else if (isAmbient && wantsAmbient(listener)) {
+                        isWanted = true
+                    } else if (isBotMessage && wantsBotMessage(listener)) {
+                        isWanted = true
+                    }
+
+                    if (!isWanted) return
+
+                    for (const pattern of listener.patterns) {
+                        const matches = text.match(pattern)
+                        if (!matches) continue
+
+                        this.handleMatch(listener, {
+                            ...chessterMessage,
+                            matches,
+                        })
+                        break
+                    }
+                })
+            } catch (error) {
+                this.log.error(`Error handling message: ${error}`)
+                await say(
+                    'Error processing your message. Please try again later.'
+                )
+            }
+        })
+
+        // Set up event handler for @mentions
+        this.app.event('app_mention', async ({ event, say, context }) => {
+            try {
+                const channel = await this.getChannel(event.channel)
+                if (!channel) {
+                    this.log.warn(
+                        `Unable to get details for channel: ${event.channel}`
+                    )
+                    return
+                }
+
+                let text = event.text || ''
+                // Remove bot mention
+                if (this.controller?.id) {
+                    text = text.replace(`<@${this.controller.id}> `, '')
+                    text = text.replace(`<@${this.controller.id}>`, '')
+                }
+
+                const chessterMessage: ChessterMessage = {
+                    type: 'message',
+                    user: event.user || '',
+                    channel,
+                    text,
+                    ts: event.ts,
+                    attachments: [],
+                    isPingModerator: false,
+                }
+
+                // Process each listener that wants direct mentions
+                this.listeners.forEach((listener) => {
+                    if (wantsDirectMention(listener)) {
+                        for (const pattern of listener.patterns) {
+                            const matches = text.match(pattern)
+                            if (!matches) continue
+
+                            this.handleMatch(listener, {
+                                ...chessterMessage,
+                                matches,
+                            })
+                            break
+                        }
+                    }
+                })
+            } catch (error) {
+                this.log.error(`Error handling app_mention: ${error}`)
+                await say(
+                    'Error processing your mention. Please try again later.'
+                )
+            }
+        })
     }
 
     hears(options: SlackRTMEventListenerOptions): void {
@@ -1146,8 +1195,11 @@ ${usernames.join(', ')}`
     }
 
     on(options: OnOptions) {
-        // return this.rtm.on(options.event, (event) =>
-        //     options.callback(this, event)
-        // )
+        if (options.event === 'member_joined_channel') {
+            this.app.event('member_joined_channel', async ({ event }) => {
+                // @ts-ignore hope I don't regret this lol
+                options.callback(this, event)
+            })
+        }
     }
 }
