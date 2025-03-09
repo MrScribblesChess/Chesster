@@ -542,17 +542,30 @@ export class SlackEntityLookup<SlackEntity extends SlackEntityWithNameAndId> {
         return []
     }
 
+    // In SlackEntityLookup class, update the add method:
     add(entity: SlackEntity) {
+        // Always add by ID
         this._addByIdWithDuplicate(entity.id.toUpperCase(), entity)
-        // Don't warn for DM channels which don't have names
-        if (entity.name === undefined && !entity.id.startsWith('D')) {
+
+        // Special handling for DM channels (they won't have names)
+        if (entity.id.startsWith('D')) {
+            // For DM channels, we just store them by ID and don't require names
+            return
+        }
+
+        // Warning for non-DM entities without names
+        if (entity.name === undefined) {
             this.log.warn(`${entity.id} does not have a name`)
             return
         }
-        if (entity.name !== undefined) {
+
+        // Add by name if it exists
+        if (entity.name) {
             const slackName = entity.name.toLowerCase()
             this._addByNameWithDuplicate(slackName, entity)
         }
+
+        // Add by lichess username if it exists
         if (entity.lichess_username) {
             const lichessId = entity.lichess_username.toLowerCase()
             this._addByNameWithDuplicate(lichessId, entity)
@@ -654,13 +667,17 @@ export class SlackBot {
         await this.app.start()
         this.log.info('Bolt app started successfully')
 
-        // Connect to the database
-        // I'm not sure if this is necessary for the events API. Or even what it does. But when I uncomment this, chesster stops responding to prompts.
+        // Connect to the database FIRST
         if (this.connectToModels) {
-            await models.connect(this.config)
+            try {
+                await models.connect(this.config)
+                this.log.info('Database connected successfully')
+            } catch (error) {
+                this.log.error(`Database connection error: ${error}`)
+            }
         }
 
-        // Get bot information to set controller/self ID
+        // Get bot information to set controller/self ID SECOND
         try {
             const authInfo = await this.app.client.auth.test()
             this.log.info(`Auth info: ${JSON.stringify(authInfo)}`)
@@ -680,12 +697,22 @@ export class SlackBot {
             this.log.error(`Error getting bot info: ${error}`)
         }
 
-        // Set up event listeners
-        this.startOnListener()
+        // Load users and channels THIRD
+        try {
+            this.log.info('Loading users...')
+            await this.updatesUsers()
+            this.log.info('Users loaded successfully')
 
-        // Much like `await models.connect` just above, I'm not sure if this is necessary for the events API. Or even what it does. But when I uncomment this, I get errors when I start up chesster..
-        await this.updatesUsers()
-        await this.updateChannels()
+            this.log.info('Loading channels...')
+            await this.updateChannels()
+            this.log.info('Channels loaded successfully')
+        } catch (error) {
+            this.log.error(`Error loading users/channels: ${error}`)
+        }
+
+        // Set up event listeners LAST - after all data is loaded
+        this.log.info('Setting up event listeners')
+        this.startOnListener()
 
         this.log.info('Chesster is ready!')
 
@@ -1015,10 +1042,22 @@ ${usernames.join(', ')}`
         listener: SlackRTMEventListenerOptions,
         message: CommandMessage
     ) {
+        this.log.info(
+            `handleMatch called with pattern: ${listener.patterns
+                .map((p) => p.source)
+                .join(', ')} and message: ${message.text}`
+        )
+
         let allowedTypes = ['command', 'league_command']
         let member: LeagueMember | undefined
         if (message.user) {
             member = this.users.getByNameOrID(message.user)
+            // Add this debugging line
+            this.log.info(
+                `Handle match found user: ${
+                    member?.name || 'UNDEFINED'
+                } for ID: ${message.user}`
+            )
         }
         const _league = getLeague(this, message, false)
         if (!_league || !member) {
@@ -1035,18 +1074,42 @@ ${usernames.join(', ')}`
                     listener.type === 'command' &&
                     allowedTypes.indexOf('command') !== -1
                 ) {
-                    _.map(listener.middleware, (m) =>
-                        m(this, { member, ...message })
+                    // IMPORTANT FIX: Log before callback
+                    this.log.info(
+                        `Executing command callback for pattern: ${listener.patterns
+                            .map((p) => p.source)
+                            .join(', ')}`
                     )
+
+                    // Run any middleware first
+                    if (listener.middleware) {
+                        listener.middleware.forEach((m) =>
+                            m(this, { member, ...message })
+                        )
+                    }
+
+                    // Execute the command callback - THIS IS THE CRUCIAL PART
                     listener.callback(this, { member, ...message })
+
+                    // Log after execution
+                    this.log.info('Command executed successfully')
                 } else if (
                     listener.type === 'league_command' &&
                     allowedTypes.indexOf('league_command') !== -1
                 ) {
                     if (_league && member) {
-                        // Typescript should have been able know that they are set appropriately
-                        // here.
-                        _.map(listener.middleware, (m) => m(this, message))
+                        // SAME FIX HERE
+                        this.log.info(
+                            `Executing league_command callback for pattern: ${listener.patterns
+                                .map((p) => p.source)
+                                .join(', ')}`
+                        )
+
+                        // Run middleware first
+                        if (listener.middleware) {
+                            listener.middleware.forEach((m) => m(this, message))
+                        }
+
                         const leagueCommandMessage: LeagueCommandMessage = {
                             ...message,
                             league: _league,
@@ -1055,12 +1118,23 @@ ${usernames.join(', ')}`
                                 member.lichess_username
                             ),
                         }
+
+                        // Execute command
                         listener.callback(this, leagueCommandMessage)
+
+                        this.log.info('League command executed successfully')
                     } else {
-                        this.log.warn('Typescript failed me')
+                        this.log.warn(
+                            'Cannot execute league command - missing league or member'
+                        )
                     }
                 }
             } catch (error) {
+                this.log.error(
+                    `Error in command execution: ${
+                        error instanceof Error ? error.message : String(error)
+                    }`
+                )
                 if (error instanceof StopControllerError) {
                     this.log.error(
                         `Middleware asked to not process controller callback: ${JSON.stringify(
@@ -1070,7 +1144,11 @@ ${usernames.join(', ')}`
                 }
             }
         } catch (e) {
-            this.log.info(`Error handling event: ${message}`)
+            this.log.error(
+                `Critical error handling event: ${
+                    e instanceof Error ? e.message : String(e)
+                }`
+            )
             this.say({
                 channel: message.channel.id,
                 text: 'Something has gone terribly terribly wrong. Please forgive me.',
@@ -1182,11 +1260,19 @@ ${usernames.join(', ')}`
                 }
 
                 let text = event.text || ''
+
+                this.log.info(
+                    `Original text: "${text}", controller id: ${
+                        this.controller?.id || 'undefined'
+                    }`
+                )
+
                 if (this.controller?.id) {
                     text = text.replace(
                         new RegExp(`<@${this.controller.id}>\\s*`, 'g'),
                         ''
                     )
+                    this.log.info(`Text after removing mention: "${text}"`)
                 }
 
                 const chessterMessage: ChessterMessage = {
@@ -1199,23 +1285,42 @@ ${usernames.join(', ')}`
                     isPingModerator: false,
                 }
 
-                // Process each listener looking for direct mention patterns
+                // Add this debug log to show all available listeners
+                this.log.info(`Total listeners: ${this.listeners.length}`)
+
+                // Loop through ALL listeners that want direct mentions
+                let matchFound = false
                 for (const listener of this.listeners) {
                     if (!wantsDirectMention(listener)) continue
+
+                    this.log.info(
+                        `Checking listener: ${
+                            listener.type
+                        }, patterns: ${listener.patterns
+                            .map((p) => p.source)
+                            .join(', ')}`
+                    )
 
                     for (const pattern of listener.patterns) {
                         const matches = text.match(pattern)
                         if (!matches) continue
 
                         this.log.info(
-                            `Found mention match for pattern: ${pattern.source}, text: ${text}`
+                            `Found match for pattern: ${pattern.source}`
                         )
                         await this.handleMatch(listener, {
                             ...chessterMessage,
                             matches,
                         })
+                        matchFound = true
                         break
                     }
+                }
+
+                if (!matchFound) {
+                    this.log.info(
+                        `No matching listener found for text: "${text}"`
+                    )
                 }
             } catch (error) {
                 this.log.error(`Error handling app_mention: ${error}`)
