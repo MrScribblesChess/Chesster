@@ -179,9 +179,13 @@ chesster.hears({
 // commands
 
 function prepareCommandsMessage() {
+    const chessterId = chesster.controller?.id
+        ? `<@${chesster.controller.id}>`
+        : '@chesster'
+
     return (
         'I will respond to the following commands when they are spoken to ' +
-        chesster.users.getIdString('chesster') +
+        chessterId +
         ': \n```' +
         '    [ starter guide ]              ! get the starter guide link; thanks GnarlyGoat!\n' +
         '    [ rules | regulations ]        ! get the rules and regulations.\n' +
@@ -210,6 +214,7 @@ chesster.hears({
     patterns: [/^commands/i, /^command list/i, /^help$/i],
     messageTypes: ['direct_mention', 'direct_message'],
     callback: async (bot: slack.SlackBot, message: slack.CommandMessage) => {
+        console.log("received 'commands' command")
         const convo = await bot.startPrivateConversation([message.user])
         bot.say({
             channel: convo.channel.id,

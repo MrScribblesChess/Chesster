@@ -543,8 +543,6 @@ export class SlackEntityLookup<SlackEntity extends SlackEntityWithNameAndId> {
     }
 
     add(entity: SlackEntity) {
-        console.log('entity:', entity)
-
         this._addByIdWithDuplicate(entity.id.toUpperCase(), entity)
         if (entity.name === undefined) {
             this.log.warn(`${entity.id} does not have a name`)
@@ -660,12 +658,35 @@ export class SlackBot {
         //     await models.connect(this.config)
         // }
 
+        // Get bot information to set controller/self ID
+        try {
+            const authInfo = await this.app.client.auth.test()
+            if (authInfo.ok) {
+                this.controller = {
+                    id: authInfo.user_id as string,
+                    name: authInfo.user as string,
+                }
+                this.log.info(
+                    `Bot ID: ${this.controller.id}, name: ${this.controller.name}`
+                )
+            } else {
+                this.log.error('Failed to get bot information')
+            }
+        } catch (error) {
+            this.log.error(`Error getting bot info: ${error}`)
+        }
+
+        // Connect to the database if needed
+        if (this.connectToModels) {
+            await models.connect(this.config)
+        }
+
         // Set up event listeners
         this.startOnListener()
 
         // Much like `await models.connect` just above, I'm not sure if this is necessary for the events API. Or even what it does. But when I uncomment this, I get errors when I start up chesster..
-        // await this.updatesUsers()
-        // await this.updateChannels()
+        await this.updatesUsers()
+        await this.updateChannels()
 
         this.log.info('Chesster is ready!')
 
@@ -726,11 +747,6 @@ export class SlackBot {
         // this.rtm.on('unable_to_rtm_start', (error) => {
         //     this.log.error(`Unable to RTM start: ${JSON.stringify(error)}`)
         // })
-
-        // connect to the database
-        if (this.connectToModels) {
-            await models.connect(this.config)
-        }
 
         // refresh your user and channel list every 10 minutes.
         // used to be every 2 minutes but we started to hit rate limits.
@@ -1071,7 +1087,7 @@ ${usernames.join(', ')}`
     // Then it routes the message to the appropriate "listener"
     // The listener concept is just the idea of a callback.
     async startOnListener() {
-        // Set up event handler for regular messages (not direct mentions)
+        // Set up event handler for direct messages and ambient messages
         this.app.message(/.*/, async ({ message, say, context }) => {
             try {
                 const channel = await this.getChannel(message.channel)
@@ -1081,6 +1097,8 @@ ${usernames.join(', ')}`
                     )
                     return
                 }
+
+                this.log.debug(`Received message: ${JSON.stringify(message)}`)
 
                 // @ts-expect-error user exists on message
                 const user = message.user
@@ -1100,10 +1118,14 @@ ${usernames.join(', ')}`
 
                 // Message context
                 const isDirectMessage = channel?.is_im && !channel?.is_group
-                const isAmbient = true
+                const isAmbient = !isDirectMessage
                 const isBotMessage =
-                    // @ts-expect-error bot_id exists on message --- I think? TODO investigate that
+                    // @ts-expect-error these properties exist on the message
                     message.subtype === 'bot_message' || message.bot_id
+
+                this.log.debug(
+                    `Message context: DM=${isDirectMessage}, ambient=${isAmbient}, bot=${isBotMessage}`
+                )
 
                 // Process each listener
                 this.listeners.forEach((listener) => {
@@ -1119,10 +1141,19 @@ ${usernames.join(', ')}`
 
                     if (!isWanted) return
 
+                    this.log.debug(
+                        `Checking patterns for listener: ${listener.patterns
+                            .map((p) => p.source)
+                            .join(', ')}`
+                    )
+
                     for (const pattern of listener.patterns) {
                         const matches = text.match(pattern)
                         if (!matches) continue
 
+                        this.log.debug(
+                            `Found match for pattern: ${pattern.source}`
+                        )
                         this.handleMatch(listener, {
                             ...chessterMessage,
                             matches,
@@ -1141,6 +1172,8 @@ ${usernames.join(', ')}`
         // Set up event handler for @mentions
         this.app.event('app_mention', async ({ event, say, context }) => {
             try {
+                this.log.debug(`Received app_mention: ${JSON.stringify(event)}`)
+
                 const channel = await this.getChannel(event.channel)
                 if (!channel) {
                     this.log.warn(
@@ -1152,8 +1185,14 @@ ${usernames.join(', ')}`
                 let text = event.text || ''
                 // Remove bot mention
                 if (this.controller?.id) {
-                    text = text.replace(`<@${this.controller.id}> `, '')
-                    text = text.replace(`<@${this.controller.id}>`, '')
+                    this.log.debug(
+                        `Removing mention of ${this.controller.id} from text: "${text}"`
+                    )
+                    text = text.replace(
+                        new RegExp(`<@${this.controller.id}>\\s*`, 'g'),
+                        ''
+                    )
+                    this.log.debug(`Text after removing mention: "${text}"`)
                 }
 
                 const chessterMessage: ChessterMessage = {
@@ -1166,13 +1205,19 @@ ${usernames.join(', ')}`
                     isPingModerator: false,
                 }
 
-                // Process each listener that wants direct mentions
+                // Process listeners that want direct mentions
                 this.listeners.forEach((listener) => {
                     if (wantsDirectMention(listener)) {
                         for (const pattern of listener.patterns) {
+                            this.log.debug(
+                                `Checking mention pattern: ${pattern.source} against text: "${text}"`
+                            )
                             const matches = text.match(pattern)
                             if (!matches) continue
 
+                            this.log.debug(
+                                `Found mention match for pattern: ${pattern.source}`
+                            )
                             this.handleMatch(listener, {
                                 ...chessterMessage,
                                 matches,
