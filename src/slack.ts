@@ -543,6 +543,8 @@ export class SlackEntityLookup<SlackEntity extends SlackEntityWithNameAndId> {
     }
 
     add(entity: SlackEntity) {
+        console.log('entity:', entity)
+
         this._addByIdWithDuplicate(entity.id.toUpperCase(), entity)
         if (entity.name === undefined) {
             this.log.warn(`${entity.id} does not have a name`)
@@ -729,8 +731,6 @@ export class SlackBot {
         if (this.connectToModels) {
             await models.connect(this.config)
         }
-
-        this.startOnListener()
 
         // refresh your user and channel list every 10 minutes.
         // used to be every 2 minutes but we started to hit rate limits.
