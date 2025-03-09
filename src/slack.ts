@@ -544,18 +544,20 @@ export class SlackEntityLookup<SlackEntity extends SlackEntityWithNameAndId> {
 
     add(entity: SlackEntity) {
         this._addByIdWithDuplicate(entity.id.toUpperCase(), entity)
-        if (entity.name === undefined) {
+        // Don't warn for DM channels which don't have names
+        if (entity.name === undefined && !entity.id.startsWith('D')) {
             this.log.warn(`${entity.id} does not have a name`)
             return
         }
-        const slackName = entity.name.toLowerCase()
-        this._addByNameWithDuplicate(slackName, entity)
+        if (entity.name !== undefined) {
+            const slackName = entity.name.toLowerCase()
+            this._addByNameWithDuplicate(slackName, entity)
+        }
         if (entity.lichess_username) {
             const lichessId = entity.lichess_username.toLowerCase()
             this._addByNameWithDuplicate(lichessId, entity)
         }
     }
-
     getId(name: string): string | undefined {
         const entity = this.byName[name.toLowerCase()]
         if (!entity) {
@@ -652,33 +654,30 @@ export class SlackBot {
         await this.app.start()
         this.log.info('Bolt app started successfully')
 
-        // // Connect to the database
+        // Connect to the database
         // I'm not sure if this is necessary for the events API. Or even what it does. But when I uncomment this, chesster stops responding to prompts.
-        // if (this.connectToModels) {
-        //     await models.connect(this.config)
-        // }
+        if (this.connectToModels) {
+            await models.connect(this.config)
+        }
 
         // Get bot information to set controller/self ID
         try {
             const authInfo = await this.app.client.auth.test()
+            this.log.info(`Auth info: ${JSON.stringify(authInfo)}`)
+
             if (authInfo.ok) {
                 this.controller = {
                     id: authInfo.user_id as string,
                     name: authInfo.user as string,
                 }
                 this.log.info(
-                    `Bot ID: ${this.controller.id}, name: ${this.controller.name}`
+                    `Bot controller set - ID: ${this.controller.id}, Name: ${this.controller.name}`
                 )
             } else {
                 this.log.error('Failed to get bot information')
             }
         } catch (error) {
             this.log.error(`Error getting bot info: ${error}`)
-        }
-
-        // Connect to the database if needed
-        if (this.connectToModels) {
-            await models.connect(this.config)
         }
 
         // Set up event listeners
@@ -1170,9 +1169,9 @@ ${usernames.join(', ')}`
         })
 
         // Set up event handler for @mentions
-        this.app.event('app_mention', async ({ event, say, context }) => {
+        this.app.event('app_mention', async ({ event, say }) => {
             try {
-                this.log.debug(`Received app_mention: ${JSON.stringify(event)}`)
+                this.log.info(`Received app_mention: ${JSON.stringify(event)}`)
 
                 const channel = await this.getChannel(event.channel)
                 if (!channel) {
@@ -1183,16 +1182,11 @@ ${usernames.join(', ')}`
                 }
 
                 let text = event.text || ''
-                // Remove bot mention
                 if (this.controller?.id) {
-                    this.log.debug(
-                        `Removing mention of ${this.controller.id} from text: "${text}"`
-                    )
                     text = text.replace(
                         new RegExp(`<@${this.controller.id}>\\s*`, 'g'),
                         ''
                     )
-                    this.log.debug(`Text after removing mention: "${text}"`)
                 }
 
                 const chessterMessage: ChessterMessage = {
@@ -1205,32 +1199,26 @@ ${usernames.join(', ')}`
                     isPingModerator: false,
                 }
 
-                // Process listeners that want direct mentions
-                this.listeners.forEach((listener) => {
-                    if (wantsDirectMention(listener)) {
-                        for (const pattern of listener.patterns) {
-                            this.log.debug(
-                                `Checking mention pattern: ${pattern.source} against text: "${text}"`
-                            )
-                            const matches = text.match(pattern)
-                            if (!matches) continue
+                // Process each listener looking for direct mention patterns
+                for (const listener of this.listeners) {
+                    if (!wantsDirectMention(listener)) continue
 
-                            this.log.debug(
-                                `Found mention match for pattern: ${pattern.source}`
-                            )
-                            this.handleMatch(listener, {
-                                ...chessterMessage,
-                                matches,
-                            })
-                            break
-                        }
+                    for (const pattern of listener.patterns) {
+                        const matches = text.match(pattern)
+                        if (!matches) continue
+
+                        this.log.info(
+                            `Found mention match for pattern: ${pattern.source}, text: ${text}`
+                        )
+                        await this.handleMatch(listener, {
+                            ...chessterMessage,
+                            matches,
+                        })
+                        break
                     }
-                })
+                }
             } catch (error) {
                 this.log.error(`Error handling app_mention: ${error}`)
-                await say(
-                    'Error processing your mention. Please try again later.'
-                )
             }
         })
     }
