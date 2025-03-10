@@ -670,10 +670,15 @@ export class SlackBot {
         // Connect to the database FIRST
         if (this.connectToModels) {
             try {
+                // Note to self for testing events API: Something is failing around here. Code isn't proceeding but not getting error message either
                 await models.connect(this.config)
+                console.log('blah blah blah')
+
                 this.log.info('Database connected successfully')
             } catch (error) {
-                this.log.error(`Database connection error: ${error}`)
+                console.log('blah blah blah')
+
+                this.log.info(`Database connection error: ${error}`)
             }
         }
 
@@ -712,7 +717,7 @@ export class SlackBot {
 
         // Set up event listeners LAST - after all data is loaded
         this.log.info('Setting up event listeners')
-        this.startOnListener()
+        await this.startOnListener()
 
         this.log.info('Chesster is ready!')
 
@@ -1164,6 +1169,18 @@ ${usernames.join(', ')}`
     // Then it routes the message to the appropriate "listener"
     // The listener concept is just the idea of a callback.
     async startOnListener() {
+        // DEBUG: Log total listeners at startup
+        this.log.info(
+            `Setting up listeners - total registered: ${this.listeners.length}`
+        )
+        for (let i = 0; i < Math.min(5, this.listeners.length); i++) {
+            this.log.info(
+                `Listener ${i}: ${
+                    this.listeners[i].type
+                }, patterns: ${this.listeners[i].patterns.map((p) => p.source)}`
+            )
+        }
+
         // Set up event handler for direct messages and ambient messages
         this.app.message(/.*/, async ({ message, say, context }) => {
             try {
@@ -1285,41 +1302,62 @@ ${usernames.join(', ')}`
                     isPingModerator: false,
                 }
 
-                // Add this debug log to show all available listeners
-                this.log.info(`Total listeners: ${this.listeners.length}`)
+                // Loop through ALL command listeners to find matches
+                let matched = false
 
-                // Loop through ALL listeners that want direct mentions
-                let matchFound = false
+                // Find command listeners first
                 for (const listener of this.listeners) {
-                    if (!wantsDirectMention(listener)) continue
-
-                    this.log.info(
-                        `Checking listener: ${
-                            listener.type
-                        }, patterns: ${listener.patterns
-                            .map((p) => p.source)
-                            .join(', ')}`
-                    )
-
-                    for (const pattern of listener.patterns) {
-                        const matches = text.match(pattern)
-                        if (!matches) continue
-
-                        this.log.info(
-                            `Found match for pattern: ${pattern.source}`
-                        )
-                        await this.handleMatch(listener, {
-                            ...chessterMessage,
-                            matches,
-                        })
-                        matchFound = true
-                        break
+                    if (
+                        listener.type === 'command' &&
+                        listener.messageTypes.includes('direct_mention')
+                    ) {
+                        for (const pattern of listener.patterns) {
+                            this.log.info(
+                                `Checking pattern: ${pattern.source} against text: "${text}"`
+                            )
+                            const matches = text.match(pattern)
+                            if (matches) {
+                                this.log.info(
+                                    `✓ MATCHED pattern: ${pattern.source}`
+                                )
+                                matched = true
+                                await this.handleMatch(listener, {
+                                    ...chessterMessage,
+                                    matches,
+                                })
+                                return // Exit after first match
+                            }
+                        }
                     }
                 }
 
-                if (!matchFound) {
+                // If no command match, try league_command listeners
+                if (!matched) {
+                    for (const listener of this.listeners) {
+                        if (
+                            listener.type === 'league_command' &&
+                            listener.messageTypes.includes('direct_mention')
+                        ) {
+                            for (const pattern of listener.patterns) {
+                                const matches = text.match(pattern)
+                                if (matches) {
+                                    this.log.info(
+                                        `✓ MATCHED league pattern: ${pattern.source}`
+                                    )
+                                    await this.handleMatch(listener, {
+                                        ...chessterMessage,
+                                        matches,
+                                    })
+                                    return // Exit after first match
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!matched) {
                     this.log.info(
-                        `No matching listener found for text: "${text}"`
+                        `No matching listener found for text: "${text}" among ${this.listeners.length} listeners`
                     )
                 }
             } catch (error) {
@@ -1330,6 +1368,7 @@ ${usernames.join(', ')}`
 
     hears(options: SlackRTMEventListenerOptions): void {
         this.listeners.push(options)
+        console.log('Added listener; listeners.length:', this.listeners.length)
     }
 
     on(options: OnOptions) {

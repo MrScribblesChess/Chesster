@@ -354,7 +354,8 @@ chesster.hears({
 })
 
 chesster.start()
-adminSlack.start()
+console.log('TODO uncomment adminSlackk.start()')
+// adminSlack.start()
 
 // -----------------------------------------------------------------------------
 // Start the watcher.
