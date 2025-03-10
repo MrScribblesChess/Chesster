@@ -142,18 +142,24 @@ chesster.hears({
     messageTypes: ['direct_message'],
     callback: privateURLs.nomination,
 })
+
+// Events API todo: Chesster is logging that this is received, but not responding
 chesster.hears({
     type: 'league_command',
     patterns: [/get notification url/i, /notification/i],
     messageTypes: ['direct_message'],
     callback: privateURLs.notification,
 })
+
+// Events API todo: Chesster is logging that this is received, but not responding
 chesster.hears({
     type: 'league_command',
     patterns: [/availability/i, /edit availability/i, /availability edit/i],
     messageTypes: ['direct_message'],
     callback: privateURLs.availability,
 })
+
+// Events API todo: DMing this to chesster crashed chesster
 chesster.hears({
     type: 'command',
     patterns: [/link/i],
@@ -162,6 +168,7 @@ chesster.hears({
 })
 
 // rating
+// Events API: this seems to be working
 chesster.hears({
     type: 'command',
     patterns: [slack.appendPlayerRegex('rating', true)],
@@ -169,6 +176,7 @@ chesster.hears({
     callback: playerInfo.playerRating,
 })
 
+// Events API: No idea how to test this, hope it's working
 chesster.hears({
     type: 'command',
     patterns: [slack.appendPlayerRegex('pairing', true)],
@@ -209,6 +217,7 @@ function prepareCommandsMessage() {
     )
 }
 
+// Events API: this is working
 chesster.hears({
     type: 'command',
     patterns: [/^commands/i, /^command list/i, /^help$/i],
@@ -224,7 +233,7 @@ chesster.hears({
 })
 
 // Channel pings
-
+// Events API: This refuses to ping because I'm not a mod, but chesster does respond
 chesster.hears({
     type: 'command',
     patterns: [/^ping channel$/i],
@@ -242,12 +251,13 @@ chesster.hears({
 })
 
 // welcome
-
+// Events API: Can't test this yet
 chesster.on({
     event: 'member_joined_channel',
     callback: onboarding.welcomeMessage,
 })
 
+// Events API: This is working
 chesster.hears({
     type: 'command',
     middleware: [slack.requiresModerator],
@@ -304,6 +314,7 @@ chesster.hears({
     callback: subscription.helpHandler,
 })
 
+// Events API: Can't test this yet
 chesster.hears({
     type: 'command',
     patterns: [/^subscription list$/i],
@@ -311,6 +322,7 @@ chesster.hears({
     callback: subscription.listHandler,
 })
 
+// Events API: Can't test this yet
 chesster.hears({
     type: 'command',
     patterns: [/^subscribe teams$/i],
@@ -320,6 +332,10 @@ chesster.hears({
 
 // subscriptions
 
+// Events API:
+// `I'm sorry, but an error occurred processing this subscription command`
+// This was in response to: tell me when a-game-starts in 45+45 for mrscribbles
+// Not sure if that's because the command isn't working, or because of db connection stuff
 chesster.hears({
     type: 'command',
     patterns: [/^tell/i],
@@ -327,6 +343,7 @@ chesster.hears({
     callback: subscription.tellMeWhenHandler,
 })
 
+// Events API: Can't test this yet
 chesster.hears({
     type: 'command',
     patterns: [/^subscription remove (\d+)$/i],

@@ -95,18 +95,44 @@ export async function connect(config: ChessterConfig) {
             "We don't support anything but postgresql because I'm lazy"
         )
     }
+
+    // Add connection timeout to prevent hanging
+    const connectionOptions = {
+        ...config.database,
+        dialect: 'postgres' as const,
+        // Add connection timeout
+        dialectOptions: {
+            connectTimeout: 10000, // 10 seconds
+        },
+    }
+
     const sequelize = new Sequelize(
         config.database.name,
         config.database.username,
         config.database.password,
-        { ...config.database, dialect: 'postgres' }
+        connectionOptions
     )
 
     try {
-        await sequelize.authenticate()
+        winston.info('[models.connect()] Attempting to connect to database...')
+        await Promise.race([
+            sequelize.authenticate(),
+            new Promise((_, reject) =>
+                setTimeout(
+                    () =>
+                        reject(
+                            new Error(
+                                'Database connection timeout after 10 seconds'
+                            )
+                        ),
+                    10000
+                )
+            ),
+        ])
+        winston.info('[models.connect()] Database connection successful')
         defineModels(sequelize)
     } catch (e) {
-        winston.error(`[models.connect()] Error connection to db: ${e}`)
+        winston.error(`[models.connect()] Error connecting to db: ${e}`)
         throw e
     }
 }

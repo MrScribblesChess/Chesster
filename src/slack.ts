@@ -668,20 +668,36 @@ export class SlackBot {
         this.log.info('Bolt app started successfully')
 
         // Connect to the database FIRST
+        // TODO: Skipping database connection if db connection fails for now, because I need to test events API migration and this isn't working. But need to make db connection mandatory again. And remove "start-no-db" script from package.json when you do so.
         if (this.connectToModels) {
             try {
                 console.log('About to connect to database...')
-                // Note to self for testing events API: Something is failing around here. Code isn't proceeding but not getting error message either
-                await models.connect(this.config)
-                console.log('Database connection returned')
-                this.log.info('Database connected successfully')
 
-                this.log.info('Database connected successfully')
+                // For testing: Check if we should bypass database
+                const skipDatabase = process.env.CHESSTER_SKIP_DB === 'true'
+
+                if (skipDatabase) {
+                    console.log(
+                        'Database connection skipped (CHESSTER_SKIP_DB=true)'
+                    )
+                    this.log.info(
+                        'Database connection skipped per environment setting'
+                    )
+                } else {
+                    await models.connect(this.config)
+                    console.log('Database connection returned')
+                    this.log.info('Database connected successfully')
+                }
             } catch (error) {
-                this.log.info(`Database connection error: ${error}`)
+                console.error('Database connection error:', error)
+                this.log.error(`Database connection error: ${error}`)
+                // Continue execution even after database error
+                // This makes the application more resilient
+                this.log.warn(
+                    'Continuing without database connection (features requiring database will not work)'
+                )
             }
         }
-
         // Get bot information to set controller/self ID SECOND
         try {
             const authInfo = await this.app.client.auth.test()
@@ -1265,6 +1281,7 @@ ${usernames.join(', ')}`
         })
 
         // Set up event handler for @mentions
+        // TODO this.app.event and this.app.message have very similar logic; combine them into a util of some sort
         this.app.event('app_mention', async ({ event, say }) => {
             try {
                 this.log.info(`Received app_mention: ${JSON.stringify(event)}`)
