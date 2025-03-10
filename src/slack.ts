@@ -670,14 +670,14 @@ export class SlackBot {
         // Connect to the database FIRST
         if (this.connectToModels) {
             try {
+                console.log('About to connect to database...')
                 // Note to self for testing events API: Something is failing around here. Code isn't proceeding but not getting error message either
                 await models.connect(this.config)
-                console.log('blah blah blah')
+                console.log('Database connection returned')
+                this.log.info('Database connected successfully')
 
                 this.log.info('Database connected successfully')
             } catch (error) {
-                console.log('blah blah blah')
-
                 this.log.info(`Database connection error: ${error}`)
             }
         }
@@ -1169,6 +1169,7 @@ ${usernames.join(', ')}`
     // Then it routes the message to the appropriate "listener"
     // The listener concept is just the idea of a callback.
     async startOnListener() {
+        console.log('blah blah blah')
         // DEBUG: Log total listeners at startup
         this.log.info(
             `Setting up listeners - total registered: ${this.listeners.length}`
