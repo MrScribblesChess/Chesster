@@ -96,7 +96,8 @@ export async function connect(config: ChessterConfig) {
         )
     }
 
-    const numSecondsTimeout = 30_000
+    /** How long to wait for db connection to succeed before moving on */
+    const numMSTimeout = 10_000
 
     // Add connection timeout to prevent hanging
     const connectionOptions = {
@@ -105,7 +106,7 @@ export async function connect(config: ChessterConfig) {
         // Add connection timeout
         dialectOptions: {
             // TODO Events API: delete this db connect timeout when I don't need it for testings
-            connectTimeout: numSecondsTimeout,
+            connectTimeout: numMSTimeout,
         },
     }
 
@@ -125,10 +126,10 @@ export async function connect(config: ChessterConfig) {
                     () =>
                         reject(
                             new Error(
-                                `Database connection timeout after ${numSecondsTimeout} seconds`
+                                `Database connection timeout after ${numMSTimeout} seconds`
                             )
                         ),
-                    100000
+                    numMSTimeout
                 )
             ),
         ])
