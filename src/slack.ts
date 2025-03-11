@@ -689,10 +689,8 @@ export class SlackBot {
                     this.log.info('Database connected successfully')
                 }
             } catch (error) {
-                console.error('Database connection error:', error)
                 this.log.error(`Database connection error: ${error}`)
                 // Continue execution even after database error
-                // This makes the application more resilient
                 this.log.warn(
                     'Continuing without database connection (features requiring database will not work)'
                 )

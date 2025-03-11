@@ -125,7 +125,7 @@ export async function connect(config: ChessterConfig) {
                                 'Database connection timeout after 10 seconds'
                             )
                         ),
-                    10000
+                    100000
                 )
             ),
         ])
