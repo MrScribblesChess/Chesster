@@ -1188,13 +1188,6 @@ ${usernames.join(', ')}`
         this.log.info(
             `Setting up listeners - total registered: ${this.listeners.length}`
         )
-        for (let i = 0; i < Math.min(5, this.listeners.length); i++) {
-            this.log.info(
-                `Listener ${i}: ${
-                    this.listeners[i].type
-                }, patterns: ${this.listeners[i].patterns.map((p) => p.source)}`
-            )
-        }
 
         // Set up event handler for direct messages and ambient messages
         this.app.message(/.*/, async ({ message, say, context }) => {
@@ -1384,7 +1377,6 @@ ${usernames.join(', ')}`
 
     hears(options: SlackRTMEventListenerOptions): void {
         this.listeners.push(options)
-        console.log('Added listener; listeners.length:', this.listeners.length)
     }
 
     on(options: OnOptions) {

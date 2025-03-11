@@ -96,13 +96,16 @@ export async function connect(config: ChessterConfig) {
         )
     }
 
+    const numSecondsTimeout = 30_000
+
     // Add connection timeout to prevent hanging
     const connectionOptions = {
         ...config.database,
         dialect: 'postgres' as const,
         // Add connection timeout
         dialectOptions: {
-            connectTimeout: 10000, // 10 seconds
+            // TODO Events API: delete this db connect timeout when I don't need it for testings
+            connectTimeout: numSecondsTimeout,
         },
     }
 
@@ -122,7 +125,7 @@ export async function connect(config: ChessterConfig) {
                     () =>
                         reject(
                             new Error(
-                                'Database connection timeout after 10 seconds'
+                                `Database connection timeout after ${numSecondsTimeout} seconds`
                             )
                         ),
                     100000
