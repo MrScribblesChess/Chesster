@@ -97,7 +97,7 @@ export async function connect(config: ChessterConfig) {
     }
 
     /** How long to wait for db connection to succeed before moving on */
-    const numMSTimeout = 10_000
+    const numMSTimeout = 30_000
 
     // Add connection timeout to prevent hanging
     const connectionOptions = {
@@ -119,20 +119,21 @@ export async function connect(config: ChessterConfig) {
 
     try {
         winston.info('[models.connect()] Attempting to connect to database...')
-        await Promise.race([
-            sequelize.authenticate(),
-            new Promise((_, reject) =>
-                setTimeout(
-                    () =>
-                        reject(
-                            new Error(
-                                `Database connection timeout after ${numMSTimeout} seconds`
-                            )
-                        ),
-                    numMSTimeout
-                )
-            ),
-        ])
+        // TODO Events API: delete this db connect timeout when I don't need it for testing
+        // await Promise.race([
+        sequelize.authenticate()
+        //     new Promise((_, reject) =>
+        //         setTimeout(
+        //             () =>
+        //                 reject(
+        //                     new Error(
+        //                         `Database connection timeout after ${numMSTimeout} seconds`
+        //                     )
+        //                 ),
+        //             numMSTimeout
+        //         )
+        //     ),
+        // ])
         winston.info('[models.connect()] Database connection successful')
         defineModels(sequelize)
     } catch (e) {
