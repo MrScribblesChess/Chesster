@@ -24,17 +24,20 @@ export async function playerRating(bot: SlackBot, message: CommandMessage) {
     } else {
         player = message.member
     }
+    console.log('player:', player)
     if (!player) {
         bot.reply(message, 'I am sorry. I could not find that player.')
         return
     }
     const rating = await lichess.getPlayerRating(player.lichess_username)
     if (rating) {
+        console.log('rating:', rating)
         bot.reply(
             message,
             prepareRatingMessage(player.lichess_username, rating)
         )
     } else {
+        console.log('no rating')
         bot.reply(message, 'I am sorry. I could not find that player.')
     }
 }
