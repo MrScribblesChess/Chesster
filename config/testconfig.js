@@ -27,7 +27,7 @@ leagues.map((k) => {
     }
 })
 
-config['leagues']['45+45']['scheduling']['channel'] = 'dev-testing'
+config['leagues']['45+45']['scheduling']['channel'] = 'team-scheduling'
 config['leagues']['45+45']['results']['channel'] = 'dev-testing'
 config['leagues']['45+45']['results']['channelId'] = UNSTABLE_BOT_ID
 config['leagues']['45+45']['gamelinks']['channel'] = 'dev-testing'
@@ -53,8 +53,5 @@ config['pingMods'] = {
         'U0164C6FXLK', // @lakinwecker
     ],
 }
-
-// TODO delete this after debugging
-// console.log('config2:', config)
 
 module.exports = config
