@@ -111,29 +111,19 @@ export async function connect(config: ChessterConfig) {
     }
 
     const sequelize = new Sequelize(
-        config.database.name,
-        config.database.username,
-        config.database.password,
-        connectionOptions
+        'postgres://chesster:scrappypulpitgourdehinders@localhost/chesster',
+        {}
     )
+
+    console.log('Database connection options:', connectionOptions)
+
+    console.log('config.database.username:', config.database.username)
+    console.log('config.database.name:', config.database.name)
+    console.log('config.database.password:', config.database.password)
 
     try {
         winston.info('[models.connect()] Attempting to connect to database...')
-        // TODO Events API: delete this db connect timeout when I don't need it for testing
-        // await Promise.race([
-        sequelize.authenticate()
-        //     new Promise((_, reject) =>
-        //         setTimeout(
-        //             () =>
-        //                 reject(
-        //                     new Error(
-        //                         `Database connection timeout after ${numMSTimeout} seconds`
-        //                     )
-        //                 ),
-        //             numMSTimeout
-        //         )
-        //     ),
-        // ])
+        // await sequelize.authenticate()
         winston.info('[models.connect()] Database connection successful')
         defineModels(sequelize)
     } catch (e) {
