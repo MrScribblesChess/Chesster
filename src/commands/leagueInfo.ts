@@ -19,7 +19,7 @@ export function dmResponse(fn: FormatFn) {
         const msg = fn(message.league)
         return new Promise<void>(async (resolve, _) => {
             const convo = await bot.startPrivateConversation([message.user])
-            bot.say({ text: msg, channel: convo.channel.id })
+            bot.say({ text: msg, channel: convo.channel!.id! })
             resolve()
         })
     }

@@ -45,7 +45,7 @@ export async function linkAccounts(bot: SlackBot, message: CommandMessage) {
     )
     const convo = await bot.startPrivateConversation([message.user])
 
-    const channelId = convo.channel.id
+    const channelId = convo.channel!.id!
     let text = ''
 
     _.each(result.alreadyLinked, (username) => {

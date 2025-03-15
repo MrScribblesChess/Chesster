@@ -60,7 +60,7 @@ export function forwardMessage(chesster: SlackBot, adminSlack: SlackBot) {
                 promises.push(
                     chesster.startPrivateConversation(users).then((convo) => {
                         chesster.say({
-                            channel: convo.channel.id,
+                            channel: convo.channel!.id!,
                             text: messageToSend,
                         })
                     })

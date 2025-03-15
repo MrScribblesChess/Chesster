@@ -992,6 +992,7 @@ ${usernames.join(', ')}`
     }
 
     async reply(message: ChessterMessage, response: string) {
+        console.log('starting reply()')
         if (!message.channel) return
         return this.say({
             channel: message.channel.id,
@@ -999,6 +1000,8 @@ ${usernames.join(', ')}`
         })
     }
     async say(options: ChatPostMessageArguments) {
+        console.log('starting say()')
+
         // Replace user links in the form <@user> with <@U12345|user>
         if (options.text) {
             options.text = options.text.replace(
@@ -1017,7 +1020,20 @@ ${usernames.join(', ')}`
         if (!options.attachments) {
             options.attachments = []
         }
-        return this.app.client.chat.postMessage(options as any)
+
+        console.log('Starting this.app.client.chat.postMessage')
+
+        // @ts-ignore
+        return this.app.client.chat.postMessage({
+            ...options,
+            attachments: options.attachments ? options.attachments : [],
+            reply_broadcast: options.reply_broadcast
+                ? options.reply_broadcast
+                : false,
+            thread_ts: options.thread_ts ? options.thread_ts : '',
+            as_user: true,
+            icon_emoji: undefined,
+        })
     }
 
     async getChannel(channelId: string): Promise<SlackChannel | undefined> {

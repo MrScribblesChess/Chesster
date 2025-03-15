@@ -226,7 +226,7 @@ chesster.hears({
         console.log("received 'commands' command")
         const convo = await bot.startPrivateConversation([message.user])
         bot.say({
-            channel: convo.channel.id,
+            channel: convo.channel!.id!,
             text: prepareCommandsMessage(),
         })
     },

@@ -65,7 +65,7 @@ export function playerPairings(
             if (pairings.length < 1) {
                 bot.say({
                     text: `${member.name} has no pairings`,
-                    channel: convo.channel.id,
+                    channel: convo.channel!.id!,
                 })
             } else {
                 pairings.map((details) => {
@@ -74,7 +74,7 @@ export function playerPairings(
                             requester,
                             details
                         ),
-                        channel: convo.channel.id,
+                        channel: convo.channel!.id!,
                     })
                 })
             }
