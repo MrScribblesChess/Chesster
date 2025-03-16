@@ -110,9 +110,9 @@ export async function connect(config: ChessterConfig) {
         },
     }
 
+    // TODO Events Api: This path will obviously have to be changed in prod, this is my local path
     const sequelize = new Sequelize(
-        'postgres://chesster:scrappypulpitgourdehinders@localhost/chesster',
-        {}
+        'sqlite:/Users/a/Documents/personalprojects/chessterstuff/Chesster/chesster.db.sqlite'
     )
 
     console.log('Database connection options:', connectionOptions)
@@ -123,7 +123,7 @@ export async function connect(config: ChessterConfig) {
 
     try {
         winston.info('[models.connect()] Attempting to connect to database...')
-        // await sequelize.authenticate()
+        await sequelize.authenticate()
         winston.info('[models.connect()] Database connection successful')
         defineModels(sequelize)
     } catch (e) {
