@@ -278,7 +278,7 @@ var config = {
         chess960scheduling: 'chess960',
     },
     messageForwarding: {
-        channelId: 'G3D6N2HNF',
+        channelId: 'C08HZL49YH0',
     },
     pingMods: {
         C0VCCPMJ8: ['U0J2J60F8'],
