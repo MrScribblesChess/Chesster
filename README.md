@@ -1,10 +1,13 @@
-# CHESSTER [![Build Status](https://github.com/Lichess4545/Chesster/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Lichess4545/Chesster/actions/workflows/build.yml) [![Test Coverage](https://codeclimate.com/github/Lichess4545/Chesster/badges/coverage.svg)](https://codeclimate.com/github/Lichess4545/Chesster/coverage) 
+# CHESSTER [![Build Status](https://github.com/Lichess4545/Chesster/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/Lichess4545/Chesster/actions/workflows/build.yml) [![Test Coverage](https://codeclimate.com/github/Lichess4545/Chesster/badges/coverage.svg)](https://codeclimate.com/github/Lichess4545/Chesster/coverage)
+
 ## Introduction
+
 This bot was created to help moderate the Lichess45+45 league.
 
 It has a simple interface that integrates our Slack team, with Lichess and Website HTTP API.
 
 ## Installation
+
 0. Clone this repo
 1. Install vagrant
 2. Use the included Vagrantfile to bring up the environment - `vagrant up`, `vagrant ssh`, and `cd chesster`
@@ -26,10 +29,11 @@ It has a simple interface that integrates our Slack team, with Lichess and Websi
 
 Run these before submitting a PR:
 
-- `yarn test`
-- `yarn run lint`
+-   `yarn test`
+-   `yarn run lint`
 
 ## Website Integration
+
 This bot utilizes the heltour api from this repo: https://github.com/cyanfish/heltour/
 You will need to create a token from an installation of this app in order to access and manipulate data.
 

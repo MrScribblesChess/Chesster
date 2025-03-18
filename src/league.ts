@@ -11,7 +11,7 @@ import { League as LeagueConfig } from './config'
 import { EventEmitter } from 'events'
 import { SlackBot, LeagueMember, localTime } from './slack'
 import { LogWithPrefix } from './logging'
-import { isDefined } from "./utils";
+import { isDefined } from './utils'
 
 // An emitter for league events
 class ChessLeagueEmitter extends EventEmitter {}
@@ -170,6 +170,7 @@ export class League {
     // Refreshes everything
     // -------------------------------------------------------------------------
     refresh() {
+        // TODO Events API stuff: uncomment the error throws in this function. I'm just trying to start up chesster without irrelevant errors for testing
         return Promise.all([
             this.refreshRosters()
                 .then(() => {
@@ -180,7 +181,7 @@ export class League {
                     winston.error(
                         `${this.name}: Unable to refresh rosters: ${error}`
                     )
-                    throw error
+                    // throw error
                 }),
             this.refreshCurrentRoundSchedules()
                 .then(() => {
@@ -193,7 +194,7 @@ export class League {
                             `${this.name}: Unable to refresh pairings: ${error}`
                         )
                     }
-                    throw error
+                    // throw error
                 }),
             this.refreshLeagueModerators()
                 .then(() => {
@@ -203,7 +204,7 @@ export class League {
                     winston.error(
                         `${this.name}: Unable to refresh moderators: ${error}`
                     )
-                    throw error
+                    // throw error
                 }),
         ])
     }
@@ -512,6 +513,7 @@ export class League {
     // Get the team for a given player name
     // -------------------------------------------------------------------------
     getTeamByPlayerName(playerName: string): Team | undefined {
+        console.log('playerName:', playerName)
         playerName = playerName.toLowerCase()
         const directTeamMapping =
             this._playerLookup[playerName] &&

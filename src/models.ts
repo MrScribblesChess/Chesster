@@ -95,18 +95,39 @@ export async function connect(config: ChessterConfig) {
             "We don't support anything but postgresql because I'm lazy"
         )
     }
+
+    /** How long to wait for db connection to succeed before moving on */
+    const numMSTimeout = 30_000
+
+    // Add connection timeout to prevent hanging
+    const connectionOptions = {
+        ...config.database,
+        dialect: 'postgres' as const,
+        // Add connection timeout
+        dialectOptions: {
+            // TODO Events API: delete this db connect timeout when I don't need it for testings
+            connectTimeout: numMSTimeout,
+        },
+    }
+
+    // TODO Events Api: This path will obviously have to be changed in prod, this is my local path
     const sequelize = new Sequelize(
-        config.database.name,
-        config.database.username,
-        config.database.password,
-        { ...config.database, dialect: 'postgres' }
+        'sqlite:/Users/a/Documents/personalprojects/chessterstuff/Chesster/chesster.db.sqlite'
     )
 
+    console.log('Database connection options:', connectionOptions)
+
+    console.log('config.database.username:', config.database.username)
+    console.log('config.database.name:', config.database.name)
+    console.log('config.database.password:', config.database.password)
+
     try {
+        winston.info('[models.connect()] Attempting to connect to database...')
         await sequelize.authenticate()
+        winston.info('[models.connect()] Database connection successful')
         defineModels(sequelize)
     } catch (e) {
-        winston.error(`[models.connect()] Error connection to db: ${e}`)
+        winston.error(`[models.connect()] Error connecting to db: ${e}`)
         throw e
     }
 }
