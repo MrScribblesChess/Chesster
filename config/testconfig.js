@@ -46,7 +46,7 @@ config['channelMap']['dev-testing-lonewolf'] = 'lonewolf'
 config['channelMap']['dev-testing-blitz'] = 'blitz'
 config['channelMap'][UNSTABLE_BOT_LONEWOLF_ID] = 'lonewolf'
 
-config['messageForwarding']['channelId'] = 'G3FJXJ0C9'
+config['messageForwarding']['channelId'] = 'C08HZL49YH0'
 config['pingMods'] = {
     C016G6T5QTW: [
         // #dev-testing

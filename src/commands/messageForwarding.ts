@@ -8,13 +8,30 @@ import { SlackBot, CommandMessage } from '../slack'
 import { isDefined } from '../utils'
 
 export function forwardMessage(chesster: SlackBot, adminSlack: SlackBot) {
+    console.log('starting forwardMessage')
+
     return async (bot: SlackBot, message: CommandMessage) => {
+        // TODO events API: Delete this log
+        console.log('Executing forwardMessage callback', {
+            messageChannelId: message.channel.id,
+            configuredChannelId: adminSlack.config.messageForwarding.channelId,
+            isEqual: _.isEqual(
+                message.channel.id,
+                adminSlack.config.messageForwarding.channelId
+            ),
+        })
+
         if (
             !_.isEqual(
                 message.channel.id,
                 adminSlack.config.messageForwarding.channelId
             )
         ) {
+            // TODO events API: Delete this log
+            console.log(
+                'Channel ID mismatch - ignoring message forward request'
+            )
+
             return
         }
         const commandDescription = ['forward', 'to', '{text:targets}']
@@ -54,6 +71,8 @@ export function forwardMessage(chesster: SlackBot, adminSlack: SlackBot) {
                         if (user) users.push(user)
                     }
                 })
+
+            console.log('users:', users)
 
             const promises: Promise<void>[] = []
             if (users.length > 0) {

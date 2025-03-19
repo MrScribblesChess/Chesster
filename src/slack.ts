@@ -663,6 +663,8 @@ export class SlackBot {
     async start() {
         this.log.info('Starting Chesster with Events API')
 
+        console.log('blah blah blah1111')
+
         // Turns chesster on
         await this.app.start()
         this.log.info('Bolt app started successfully')
@@ -734,17 +736,6 @@ export class SlackBot {
         await this.startOnListener()
 
         this.log.info('Chesster is ready!')
-
-        this.app.message('hello', async ({ message, say }) => {
-            this.app.logger.info('Received hello')
-
-            // say() sends a message to the channel where the event was triggered
-            // Weirdly, if I import App at the top of this file, it says user doesn't exist on message. But if I import it with require it works fine
-            await say(
-                // @ts-expect-error this is a known bug, user definitely exists on message
-                `Hey there <@${message.user}>! I'm the real, flesh and blood Chesster, started locally and  hooked up the new Slack API. Now you just have to rewrite some functions or whatever and we'll be gucci.`
-            )
-        })
 
         this.app.logger.info('Starting app')
 
