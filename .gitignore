@@ -27,4 +27,4 @@ build
 .env
 .idea
 local.env
-.github/copilot-instructions.md
+copilot-instructions.md
