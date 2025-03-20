@@ -1236,6 +1236,8 @@ ${usernames.join(', ')}`
                     `Message context: DM=${isDirectMessage}, ambient=${isAmbient}, bot=${isBotMessage}`
                 )
 
+                console.log('this.listeners:', this.listeners)
+
                 // Process each listener
                 this.listeners.forEach((listener) => {
                     let isWanted = false
