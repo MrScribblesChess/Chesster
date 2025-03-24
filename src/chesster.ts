@@ -279,7 +279,6 @@ chesster.hears({
 })
 
 // Scheduling
-
 // Scheduling will occur on any message
 chesster.hears({
     type: 'league_command',

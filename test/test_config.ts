@@ -293,7 +293,7 @@ describe('config types', function () {
             chess960scheduling: 'chess960',
         },
         messageForwarding: {
-            channelId: 'G3D6N2HNF',
+            channelId: 'C08HZL49YH0',
         },
         pingMods: {},
     }

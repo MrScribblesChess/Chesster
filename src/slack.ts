@@ -628,6 +628,9 @@ export class SlackBot {
         this.config = config.ChessterConfigDecoder.decodeJSON(
             JSON.stringify(require(this.configFile))
         )
+
+        console.log('slackName:', slackName)
+
         // Confusing naming; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
         // @ts-expect-error it thinks token can be undefined here but it's incorrect
         this.token =
@@ -642,6 +645,8 @@ export class SlackBot {
             this.log.error(error)
             throw new Error(error)
         }
+
+        console.log('this.token:', this.token)
 
         // Confusing naming conventions; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
         const signingSecret =
@@ -674,12 +679,23 @@ export class SlackBot {
             '#'
         )
 
-        this.web = new WebClient(process.env.BOT_TOKEN)
+        // Naming conventions are confusing here
+        // chesster is the name of adminSlack; lichess4545 is the name of actual chesster
+        const botToken =
+            this.slackName === 'lichess4545'
+                ? process.env.SLACK_APP_BOT_TOKEN // Chesster
+                : process.env.ADMIN_SLACK_BOT_TOKEN // adminSlack
+
+        console.log('botToken:', botToken)
+
+        this.web = new WebClient(botToken)
+
+        console.log('this.web:', this.web)
 
         // New Events API stuff- replaces this.rtm and this.web
         // TODO maybe these tokens should go in config or something?
         this.app = new App({
-            token: process.env.BOT_TOKEN,
+            token: botToken,
             signingSecret: signingSecret,
             // Websocket that continously listens for events
             socketMode: true,
