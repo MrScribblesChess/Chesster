@@ -1,5 +1,5 @@
 // NOTE: None of these files are committed and for good reason.
-//       You must provide your own.
+// You must provide your own.
 const dotenv = require('dotenv')
 dotenv.config()
 let db = require('./db.js')
@@ -10,6 +10,7 @@ let CHESSTER_SLACK_TOKEN =
     "It won't work without this token"
 let HELTOUR_TOKEN =
     process.env.CHESSTER_HELTOUR_TOKEN || "It won't work without this token"
+
 let LICHESS_TOKEN =
     process.env.CHESSTER_LICHESS_TOKEN || "It won't work without this token"
 
@@ -59,8 +60,8 @@ var config = {
                 channel: 'team-games',
                 channelId: 'C0CSAHD43',
                 clock: {
-                    initial: 45,
-                    increment: 45,
+                    initial: 1,
+                    increment: 0,
                 },
                 rated: true,
                 variant: 'standard',
@@ -116,8 +117,9 @@ var config = {
                 channel: 'lonewolf-games',
                 channelId: 'C0SD3SCAH',
                 clock: {
-                    initial: 30,
-                    increment: 30,
+                    // Events API TODO: Change time controls back from 1+0
+                    initial: 1,
+                    increment: 0,
                 },
                 rated: true,
                 variant: 'standard',
@@ -217,14 +219,14 @@ var config = {
             },
             results: {
                 channel: 'chess960games',
-                channelId: 'CAG3R6HL6',
+                channelId: 'C08KHN4FTUY',
             },
             gamelinks: {
                 channel: 'chess960games',
-                channelId: 'CAG3R6HL6',
+                channelId: 'C08KHN4FTUY',
                 clock: {
-                    initial: 20,
-                    increment: 20,
+                    initial: 1,
+                    increment: 0,
                 },
                 rated: true,
                 variant: 'chess960',
