@@ -3,6 +3,8 @@
 const dotenv = require('dotenv')
 dotenv.config()
 let db = require('./db.js')
+
+// These variables are unused but I'm too chicken to delete them
 let _4545_SLACK_TOKEN =
     process.env.CHESSTER_4545_SLACK_TOKEN || "It won't work without this token"
 let CHESSTER_SLACK_TOKEN =
@@ -22,6 +24,7 @@ var config = {
     watcherBaseURL: 'https://lichess.org/api/stream/games-by-users',
     watcherToken: LICHESS_TOKEN,
 
+    // These are never actually used, the variables are accessed another way
     slackTokens: {
         lichess4545: _4545_SLACK_TOKEN,
         chesster: CHESSTER_SLACK_TOKEN,
