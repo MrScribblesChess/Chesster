@@ -1,7 +1,6 @@
 // -----------------------------------------------------------------------------
 // Bot / Slack related helpers
 // -----------------------------------------------------------------------------
-import { RTMClient } from '@slack/rtm-api'
 import { App } from '@slack/bolt'
 
 // Load environment variables; don't delete this
@@ -650,11 +649,17 @@ export class SlackBot {
                 ? process.env.SLACK_SIGNING_SECRET // Chesster
                 : process.env.ADMIN_SLACK_SIGNING_SECRET // AdminSlack
 
+        console.log('signingSecret:', signingSecret)
+
         // Confusing naming conventions; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
         const appToken =
             this.slackName === 'lichess4545'
                 ? process.env.SLACK_APP_TOKEN // Chesster
                 : process.env.ADMIN_SLACK_APP_TOKEN // adminSlack
+
+        console.log('appToken:', appToken)
+
+        console.log('this.token:', this.token)
 
         // May need changing with events API migration
         this.users = new SlackEntityLookup<LeagueMember>(
@@ -1305,6 +1310,7 @@ ${usernames.join(', ')}`
         // TODO this.app.event and this.app.message have very similar logic; combine them into a util of some sort
         this.app.event('app_mention', async ({ event, say }) => {
             try {
+                console.log('blah blah blah')
                 this.log.info(`Received app_mention: ${JSON.stringify(event)}`)
 
                 const channel = await this.getChannel(event.channel)
