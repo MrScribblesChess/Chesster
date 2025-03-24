@@ -14,13 +14,23 @@ It has a simple interface that integrates our Slack team, with Lichess and Websi
 3. Install the yarn modules - `yarn install --dev`
 4. Generate a classic bot token in your Slack Team's Services and Customization.
 5. Generate a heltour token from Heltour's Administration interfaces.
-6. Add both to your `.env`:
+6. Create environment variables. Note that these names are a little confusing. Add these to your `.env`:
+
     ```
-    CHESSTER_4545_SLACK_TOKEN="xoxb-<token>"
+    adminSlack app secrets: Make these for your adminSlack bot and add them.
+    ADMIN_SLACK_APP_TOKEN="xapp-<token>"
     CHESSTER_CHESSTER_SLACK_TOKEN="xoxb-<token>"
-    CHESSTER_HELTOUR_TOKEN="<token>"
+    ADMIN_SLACK_SIGNING_SECRET="<token>"
+
+
+    Chesster app stuff: Make these for your Chesster bot and add them.
+    CHESSTER_HELTOUR_TOKEN="<token>" -- generate this from heltour in the API Keys section
     CHESSTER_LICHESS_TOKEN="<token>"
+    SLACK_APP_TOKEN="xapp-<token>"
+    BOT_TOKEN="xoxb-<token>"
+    SLACK_SIGNING_SECRET="<token>"s
     ```
+
 7. Migrate databases: `yarn run migrate config/testconfig.js`
 8. Install your bot's token in the start script, start_chesster.
 9. Start the bot. `yarn run start`
