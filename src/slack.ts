@@ -629,13 +629,33 @@ export class SlackBot {
         this.config = config.ChessterConfigDecoder.decodeJSON(
             JSON.stringify(require(this.configFile))
         )
-        this.token = this.config.slackTokens[this.slackName]
+        // Confusing naming; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
+        // @ts-expect-error it thinks token can be undefined here but it's incorrect
+        this.token =
+            this.slackName === 'lichess4545'
+                ? process.env.SLACK_APP_TOKEN // Chesster bot token
+                : this.slackName === 'chesster'
+                ? process.env.CHESSTER_CHESSTER_SLACK_TOKEN // AdminSlack bot token'
+                : "It won't work without this"
 
         if (!this.token) {
             const error = `Failed to load token for ${this.slackName} from ${this.configFile}`
             this.log.error(error)
             throw new Error(error)
         }
+
+        // Confusing naming conventions; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
+        const signingSecret =
+            this.slackName === 'lichess4545'
+                ? process.env.SLACK_SIGNING_SECRET // Chesster
+                : process.env.ADMIN_SLACK_SIGNING_SECRET // AdminSlack
+
+        // Confusing naming conventions; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
+        const appToken =
+            this.slackName === 'lichess4545'
+                ? process.env.SLACK_APP_TOKEN // Chesster
+                : process.env.ADMIN_SLACK_APP_TOKEN // adminSlack
+
         // May need changing with events API migration
         this.users = new SlackEntityLookup<LeagueMember>(
             slackName,
@@ -655,9 +675,10 @@ export class SlackBot {
         // TODO maybe these tokens should go in config or something?
         this.app = new App({
             token: process.env.BOT_TOKEN,
-            signingSecret: process.env.SLACK_SIGNING_SECRET,
+            signingSecret: signingSecret,
+            // Websocket that continously listens for events
             socketMode: true,
-            appToken: process.env.SLACK_APP_TOKEN,
+            appToken: appToken,
         })
     }
     async start() {
