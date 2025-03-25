@@ -143,7 +143,6 @@ chesster.hears({
     callback: privateURLs.nomination,
 })
 
-// Events API todo: Chesster is logging that this is received, but not responding
 chesster.hears({
     type: 'league_command',
     patterns: [/get notification url/i, /notification/i],
@@ -151,7 +150,6 @@ chesster.hears({
     callback: privateURLs.notification,
 })
 
-// Events API todo: Chesster is logging that this is received, but not responding
 chesster.hears({
     type: 'league_command',
     patterns: [/availability/i, /edit availability/i, /availability edit/i],
@@ -159,7 +157,6 @@ chesster.hears({
     callback: privateURLs.availability,
 })
 
-// Events API todo: DMing this to chesster crashed chesster
 chesster.hears({
     type: 'command',
     patterns: [/link/i],

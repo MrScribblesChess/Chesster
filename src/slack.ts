@@ -695,7 +695,6 @@ export class SlackBot {
         this.log.info('Bolt app started successfully')
 
         // Connect to the database FIRST
-        // TODO: Skipping database connection if db connection fails for now, because I need to test events API migration and this isn't working. But need to make db connection mandatory again. And remove "start-no-db" script from package.json when you do so.
         if (this.connectToModels) {
             try {
                 winston.info(

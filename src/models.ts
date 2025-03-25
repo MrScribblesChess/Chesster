@@ -96,20 +96,6 @@ export async function connect(config: ChessterConfig) {
         )
     }
 
-    /** How long to wait for db connection to succeed before moving on */
-    const numMSTimeout = 30_000
-
-    // Add connection timeout to prevent hanging
-    const connectionOptions = {
-        ...config.database,
-        dialect: 'postgres' as const,
-        // Add connection timeout
-        dialectOptions: {
-            // TODO Events API: delete this db connect timeout when I don't need it for testings
-            connectTimeout: numMSTimeout,
-        },
-    }
-
     // TODO Events Api: This path will obviously have to be changed in prod, this is my local path
     const sequelize = new Sequelize(
         'sqlite:/Users/a/Documents/personalprojects/chessterstuff/Chesster/chesster.db.sqlite'

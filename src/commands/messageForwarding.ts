@@ -9,8 +9,6 @@ import { isDefined } from '../utils'
 
 export function forwardMessage(chesster: SlackBot, adminSlack: SlackBot) {
     return async (bot: SlackBot, message: CommandMessage) => {
-        // TODO events API: Delete this log
-
         if (
             !_.isEqual(
                 message.channel.id,

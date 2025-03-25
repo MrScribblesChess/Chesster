@@ -170,7 +170,6 @@ export class League {
     // Refreshes everything
     // -------------------------------------------------------------------------
     refresh() {
-        // TODO Events API stuff: uncomment the error throws in this function. I'm just trying to start up chesster without irrelevant errors for testing
         return Promise.all([
             this.refreshRosters()
                 .then(() => {
@@ -181,7 +180,7 @@ export class League {
                     winston.error(
                         `${this.name}: Unable to refresh rosters: ${error}`
                     )
-                    // throw error
+                    throw error
                 }),
             this.refreshCurrentRoundSchedules()
                 .then(() => {
@@ -194,7 +193,7 @@ export class League {
                             `${this.name}: Unable to refresh pairings: ${error}`
                         )
                     }
-                    // throw error
+                    throw error
                 }),
             this.refreshLeagueModerators()
                 .then(() => {
@@ -204,7 +203,7 @@ export class League {
                     winston.error(
                         `${this.name}: Unable to refresh moderators: ${error}`
                     )
-                    // throw error
+                    throw error
                 }),
         ])
     }
