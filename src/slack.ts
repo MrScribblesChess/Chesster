@@ -1199,6 +1199,7 @@ ${usernames.join(', ')}`
     // The listener concept is just the idea of a callback.
     async startOnListener() {
         // Set up event handler for direct messages and ambient messages
+        // Messages that ping chesster directly are handled in `this.app.event('app_mention', ...)`
         this.app.message(/.*/, async ({ message, say, context }) => {
             try {
                 const channel = await this.getChannel(message.channel)
@@ -1208,8 +1209,6 @@ ${usernames.join(', ')}`
                     )
                     return
                 }
-
-                this.log.debug(`Received message: ${JSON.stringify(message)}`)
 
                 // @ts-expect-error user exists on message
                 const user = message.user
@@ -1281,11 +1280,10 @@ ${usernames.join(', ')}`
         })
 
         // Set up event handler for @mentions
+        // Messages that don't ping chesster directly are handled in `this.app.message...`
         // TODO this.app.event and this.app.message have very similar logic; combine them into a util of some sort
         this.app.event('app_mention', async ({ event, say }) => {
             try {
-                this.log.info(`Received app_mention: ${JSON.stringify(event)}`)
-
                 const channel = await this.getChannel(event.channel)
                 if (!channel) {
                     this.log.warn(
