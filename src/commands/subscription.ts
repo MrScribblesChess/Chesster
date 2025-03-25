@@ -223,11 +223,6 @@ function processTellCommand(
             requester.lichess_username
         )
 
-        // Appears to print valid object (TODO Events API: Delete this)
-        // console.log('requester:', requester)
-
-        console.log('team:', team)
-
         const captainName =
             team && _(team.players).filter('isCaptain').map('username').value()
         const isCaptain =
@@ -280,9 +275,6 @@ function processTellCommand(
         // Ensure the source is a valid user or team within slack
         const source = bot.getSlackUserFromNameOrID(sourceName)
 
-        // Appears to print valid object (TODO Events API: Delete this)
-        // console.log('source from bot.getSlackUserFromNameOrID:', source)
-
         const teams = _league.getTeams()
         team = _.find(teams, (t) => {
             return t.name.toLowerCase() === sourceName.toLowerCase()
@@ -296,8 +288,6 @@ function processTellCommand(
             sourceName = team.name
         }
 
-        console.log('Before findOrCreate')
-
         return db.Subscription.findOrCreate({
             where: {
                 requester: requester.lichess_username.toLowerCase(),
@@ -308,8 +298,6 @@ function processTellCommand(
             },
         })
             .then(([subscription, created]) => {
-                console.log('Subscription result:', subscription.toJSON())
-                console.log('Was created:', created)
                 return resolve(
                     `Great! I will tell ${target} when ${event} for ${sourceName} in ${_league.name}`
                 )
@@ -330,7 +318,6 @@ function processSubscriptionListCommand(
     bot: SlackBot,
     message: CommandMessage
 ): Promise<string> {
-    console.log('starting processSubscriptionListCommand')
     return new Promise((resolve, reject) => {
         const requester = bot.getSlackUserFromNameOrID(message.user)
         if (!isDefined(requester)) return
@@ -341,7 +328,6 @@ function processSubscriptionListCommand(
             order: [['id', 'ASC']],
         })
             .then((subscriptions) => {
-                console.log('subscriptions:', subscriptions)
                 let response = ''
                 _.each(subscriptions, (subscription) => {
                     const context: Context = subscription.get()
@@ -546,7 +532,6 @@ export async function tellMeWhenHandler(
     })
     return processTellCommand(bot, message)
         .then((response) => {
-            console.log('response starting:', response)
             bot.say({
                 channel: convo.channel!.id!,
                 text: response,
@@ -554,7 +539,6 @@ export async function tellMeWhenHandler(
         })
         .catch((error) => {
             winston.error(JSON.stringify(error))
-            console.log('error:', error)
             bot.say({
                 channel: convo.channel!.id!,
                 text: "I'm sorry, but an error occurred processing this subscription command",
@@ -577,19 +561,15 @@ export async function helpHandler(bot: SlackBot, message: CommandMessage) {
 // Handle the subscription list command.
 // -----------------------------------------------------------------------------
 export async function listHandler(bot: SlackBot, message: CommandMessage) {
-    console.log('start listHandler function')
     const convo = await bot.startPrivateConversation([message.user])
-    console.log('convo:', convo)
     return processSubscriptionListCommand(bot, message)
         .then(async (response) => {
-            console.log('response:', response)
             await bot.say({
                 channel: convo.channel!.id!,
                 text: response,
             })
         })
         .catch((error) => {
-            console.log('blah blah blah')
             bot.say({
                 channel: convo.channel!.id!,
                 text: "I'm sorry, but an error occurred processing this subscription command",

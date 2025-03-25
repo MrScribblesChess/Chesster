@@ -223,7 +223,6 @@ chesster.hears({
     patterns: [/^commands/i, /^command list/i, /^help$/i],
     messageTypes: ['direct_mention', 'direct_message'],
     callback: async (bot: slack.SlackBot, message: slack.CommandMessage) => {
-        console.log("received 'commands' command")
         const convo = await bot.startPrivateConversation([message.user])
         bot.say({
             channel: convo.channel!.id!,
@@ -273,7 +272,6 @@ chesster.hears({
     patterns: [/source/i],
     messageTypes: ['direct_message', 'direct_mention'],
     callback: (bot, message) => {
-        console.log('received source command')
         bot.reply(message, chesster.config.links.source)
     },
 })

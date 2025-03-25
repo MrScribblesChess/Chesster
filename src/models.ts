@@ -115,12 +115,6 @@ export async function connect(config: ChessterConfig) {
         'sqlite:/Users/a/Documents/personalprojects/chessterstuff/Chesster/chesster.db.sqlite'
     )
 
-    console.log('Database connection options:', connectionOptions)
-
-    console.log('config.database.username:', config.database.username)
-    console.log('config.database.name:', config.database.name)
-    console.log('config.database.password:', config.database.password)
-
     try {
         winston.info('[models.connect()] Attempting to connect to database...')
         await sequelize.authenticate()

@@ -629,8 +629,6 @@ export class SlackBot {
             JSON.stringify(require(this.configFile))
         )
 
-        console.log('slackName:', slackName)
-
         // Confusing naming; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
         // @ts-expect-error it thinks token can be undefined here but it's incorrect
         this.token =
@@ -646,25 +644,17 @@ export class SlackBot {
             throw new Error(error)
         }
 
-        console.log('this.token:', this.token)
-
         // Confusing naming conventions; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
         const signingSecret =
             this.slackName === 'lichess4545'
                 ? process.env.SLACK_SIGNING_SECRET // Chesster
                 : process.env.ADMIN_SLACK_SIGNING_SECRET // AdminSlack
 
-        console.log('signingSecret:', signingSecret)
-
         // Confusing naming conventions; chesster is the name of adminSlack; lichess4545 is the name of actual chesster
         const appToken =
             this.slackName === 'lichess4545'
                 ? process.env.SLACK_APP_TOKEN // Chesster
                 : process.env.ADMIN_SLACK_APP_TOKEN // adminSlack
-
-        console.log('appToken:', appToken)
-
-        console.log('this.token:', this.token)
 
         // May need changing with events API migration
         this.users = new SlackEntityLookup<LeagueMember>(
@@ -686,13 +676,8 @@ export class SlackBot {
                 ? process.env.SLACK_APP_BOT_TOKEN // Chesster
                 : process.env.ADMIN_SLACK_BOT_TOKEN // adminSlack
 
-        console.log('botToken:', botToken)
-
         this.web = new WebClient(botToken)
 
-        console.log('this.web:', this.web)
-
-        // New Events API stuff- replaces this.rtm and this.web
         // TODO maybe these tokens should go in config or something?
         this.app = new App({
             token: botToken,
@@ -705,8 +690,6 @@ export class SlackBot {
     async start() {
         this.log.info('Starting Chesster with Events API')
 
-        console.log('blah blah blah1111')
-
         // Turns chesster on
         await this.app.start()
         this.log.info('Bolt app started successfully')
@@ -715,23 +698,12 @@ export class SlackBot {
         // TODO: Skipping database connection if db connection fails for now, because I need to test events API migration and this isn't working. But need to make db connection mandatory again. And remove "start-no-db" script from package.json when you do so.
         if (this.connectToModels) {
             try {
-                console.log('About to connect to database...')
+                winston.info(
+                    '[SlackBot.start()] Attempting to connect to database...'
+                )
 
-                // For testing: Check if we should bypass database
-                const skipDatabase = process.env.CHESSTER_SKIP_DB === 'true'
-
-                if (skipDatabase) {
-                    console.log(
-                        'Database connection skipped (CHESSTER_SKIP_DB=true)'
-                    )
-                    this.log.info(
-                        'Database connection skipped per environment setting'
-                    )
-                } else {
-                    await models.connect(this.config)
-                    console.log('Database connection returned')
-                    this.log.info('Database connected successfully')
-                }
+                await models.connect(this.config)
+                winston.info('Database connected successfully')
             } catch (error) {
                 this.log.error(`Database connection error: ${error}`)
                 // Continue execution even after database error
@@ -1025,7 +997,6 @@ ${usernames.join(', ')}`
     }
 
     async reply(message: ChessterMessage, response: string) {
-        console.log('starting reply()')
         if (!message.channel) return
         return this.say({
             channel: message.channel.id,
@@ -1033,8 +1004,6 @@ ${usernames.join(', ')}`
         })
     }
     async say(options: ChatPostMessageArguments) {
-        console.log('starting say()')
-
         // Replace user links in the form <@user> with <@U12345|user>
         if (options.text) {
             options.text = options.text.replace(
@@ -1053,8 +1022,6 @@ ${usernames.join(', ')}`
         if (!options.attachments) {
             options.attachments = []
         }
-
-        console.log('Starting this.app.client.chat.postMessage')
 
         // @ts-ignore
         return this.app.client.chat.postMessage({
@@ -1232,12 +1199,6 @@ ${usernames.join(', ')}`
     // Then it routes the message to the appropriate "listener"
     // The listener concept is just the idea of a callback.
     async startOnListener() {
-        console.log('blah blah blah')
-        // DEBUG: Log total listeners at startup
-        this.log.info(
-            `Setting up listeners - total registered: ${this.listeners.length}`
-        )
-
         // Set up event handler for direct messages and ambient messages
         this.app.message(/.*/, async ({ message, say, context }) => {
             try {
@@ -1277,8 +1238,6 @@ ${usernames.join(', ')}`
                 this.log.debug(
                     `Message context: DM=${isDirectMessage}, ambient=${isAmbient}, bot=${isBotMessage}`
                 )
-
-                console.log('this.listeners:', this.listeners)
 
                 // Process each listener
                 this.listeners.forEach((listener) => {
@@ -1326,7 +1285,6 @@ ${usernames.join(', ')}`
         // TODO this.app.event and this.app.message have very similar logic; combine them into a util of some sort
         this.app.event('app_mention', async ({ event, say }) => {
             try {
-                console.log('blah blah blah')
                 this.log.info(`Received app_mention: ${JSON.stringify(event)}`)
 
                 const channel = await this.getChannel(event.channel)

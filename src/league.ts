@@ -513,7 +513,6 @@ export class League {
     // Get the team for a given player name
     // -------------------------------------------------------------------------
     getTeamByPlayerName(playerName: string): Team | undefined {
-        console.log('playerName:', playerName)
         playerName = playerName.toLowerCase()
         const directTeamMapping =
             this._playerLookup[playerName] &&
