@@ -303,7 +303,7 @@ function processTellCommand(
                 )
             })
             .catch((error) => {
-                console.error('Database error:', error)
+                winston.error('Database error:', error)
                 return reject(error)
             })
     })

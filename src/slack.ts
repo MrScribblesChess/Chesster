@@ -681,10 +681,10 @@ export class SlackBot {
         // TODO maybe these tokens should go in config or something?
         this.app = new App({
             token: botToken,
-            signingSecret: signingSecret,
+            signingSecret,
             // Websocket that continously listens for events
             socketMode: true,
-            appToken: appToken,
+            appToken,
         })
     }
     async start() {
